@@ -7,6 +7,9 @@ INPUT_CONFIG="./data/2006/2006_000000000000.cfg"
 OUTPUT_CONFIG="./data/2006_OUT/output_2006"
 STEPS=100
 
+# vim's :Termdebug string
+# Run ./data/2006/2006_000000000000.cfg ./data/2006_OUT/output_2006 100
+
 # definisce le macro contenenti i nomei degli eseguibili
 # e il numero di thread omp per la versione parallela
 NT = 2 # numero di threads OpenMP

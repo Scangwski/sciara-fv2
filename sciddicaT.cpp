@@ -14,7 +14,7 @@
 // I/O parameters used to index argv[]
 // ----------------------------------------------------------------------------
 
-#define CONFIG_PATH_ID 1
+#define INPUT_PATH_ID 1
 #define OUTPUT_PATH_ID 2
 #define MAX_STEPS_ID   3
 
@@ -78,21 +78,20 @@ void simulationInit (
     int r, 
     int c, 
     double* Sz, 
+    double* Sz_next, 
     double* Slt, 
+    double* Slt_next, 
     double* St, 
+    double* St_next, 
     double* Sf, 
-    int* Mv, 
-    bool* Mb, 
-    double* Msl)
+    bool* Mb)
 {
-  SET(Sz, c,i,j,0.0); 
-  SET(Slt,c,i,j,0.0); 
-  SET(St, c,i,j,0.0); 
-  SET(Mb, c,i,j,false); 
-  SET(Msl,c,i,j,0.0);
-  SET(Mv, c,i,j,0);
-  for (int k=0; k<NUMBER_OF_OUTFLOWS; k++)
-    BUF_SET(Sf,r,c,k,i,j,0.0); 
+  SET(Sz_next, c,i,j,GET(Sz,c,i,j) ); 
+  SET(Slt_next,c,i,j,GET(Slt,c,i,j) ); 
+  SET(St_next, c,i,j,GET(St,c,i,j) ); 
+  SET(Mb,      c,i,j,false); 
+  for (int n=0; n<NUMBER_OF_OUTFLOWS; n++)
+    BUF_SET(Sf,r,c,n,i,j,0.0); 
 }
 
 // ----------------------------------------------------------------------------
@@ -126,7 +125,7 @@ void emitLava(
     double* St_next)
 {
   double emitted_lava = 0;
-
+  
   for (int k = 0; k < vent.size(); k++)
   {
     int xVent = vent[k].x();
@@ -190,6 +189,7 @@ void computeOutflows (
   hc = powerLaw(_c, _d, t);
   for (int k = 0; k < MOORE_NEIGHBORS; k++)
   {
+    f[k] = 0.0;
     h[k] = GET(Slt, c, i+Xi[k], j+Xj[k]);
     H[k] = f[k] = theta[k] = 0;
     w[k] = _w;
@@ -239,7 +239,7 @@ void computeOutflows (
       f[k] = Pr[k] * (avg - H[k]);
 
   for (int k = 1; k < MOORE_NEIGHBORS; k++)
-    if (f[k] > 0) 
+    //if (f[k] > 0) 
       BUF_SET(Sf,r,c,k-1,i,j,f[k]);
 }
 
@@ -340,6 +340,15 @@ void computeNewTemperatureAndSolidification(
   }
 }
 
+
+template <typename type>
+void swap_pointers(type*& p1, type*& p2)
+{
+  type *pt = p1;
+  p1 = p2;
+  p2 = pt;
+}
+
 // ----------------------------------------------------------------------------
 // Function main()
 // ----------------------------------------------------------------------------
@@ -364,17 +373,11 @@ int main(int argc, char **argv)
 
   Sciara *sciara = new Sciara;
   sciara->substates = new Substates;
-  allocateSubstates(sciara);
 
   // Input data 
   int max_steps = atoi(argv[MAX_STEPS_ID]);
+  loadConfiguration(argv[INPUT_PATH_ID], sciara);
 
-  char *input_path = argv[CONFIG_PATH_ID];
-  std::cout << "max_steps = " << max_steps << std::endl;
-  std::cout << "input_path = " << input_path << std::endl;
-  loadConfiguration(argv[CONFIG_PATH_ID], sciara);
-  saveConfiguration(argv[OUTPUT_PATH_ID], sciara);
-  return 0;
   SimulationInitialize(sciara);
 
   // Domain boundaries and neighborhood
@@ -390,32 +393,24 @@ int main(int argc, char **argv)
       simulationInit(i, j, 
           sciara->rows, 
           sciara->cols, 
+          sciara->substates->Sz, 
           sciara->substates->Sz_next, 
+          sciara->substates->Slt, 
           sciara->substates->Slt_next, 
+          sciara->substates->St, 
           sciara->substates->St_next, 
           sciara->substates->Sf, 
-          sciara->substates->Mv, 
-          sciara->substates->Mb, 
-          sciara->substates->Msl);
-#pragma omp parallel for
-  for (int i = i_start; i < i_end; i++)
-    for (int j = j_start; j < j_end; j++)
-      update(i, j, sciara->rows, sciara->cols, sciara->substates->Sz, sciara->substates->Sz_next);
-#pragma omp parallel for
-  for (int i = i_start; i < i_end; i++)
-    for (int j = j_start; j < j_end; j++)
-      update(i, j, sciara->rows, sciara->cols, sciara->substates->Slt, sciara->substates->Slt_next);
-#pragma omp parallel for
-  for (int i = i_start; i < i_end; i++)
-    for (int j = j_start; j < j_end; j++)
-      update(i, j, sciara->rows, sciara->cols, sciara->substates->St, sciara->substates->St_next);
+
+          sciara->substates->Mb);
 
   util::Timer cl_timer;
   // simulation loop
-  while ( (max_steps > 0 && sciara->step <= max_steps) && sciara->elapsed_time <= sciara->effusion_duration)
+  while ( (max_steps > 0 && sciara->step <= max_steps)/* && sciara->elapsed_time <= sciara->effusion_duration */)
   {
     sciara->step++;
     sciara->effusion_duration += sciara->Pclock;
+
+    std::cout << "Sono dopo swap_pointers\n";
 
     // Apply the emitLava kernel to the whole domain and update the Slt and St state variables
 #pragma omp parallel for
@@ -433,14 +428,8 @@ int main(int argc, char **argv)
             sciara->substates->Slt, 
             sciara->substates->Slt_next,
             sciara->substates->St_next);
-#pragma omp parallel for
-    for (int i = i_start; i < i_end; i++)
-      for (int j = j_start; j < j_end; j++)
-        update(i, j, sciara->rows, sciara->cols, sciara->substates->Slt, sciara->substates->Slt_next);
-#pragma omp parallel for
-    for (int i = i_start; i < i_end; i++)
-      for (int j = j_start; j < j_end; j++)
-        update(i, j, sciara->rows, sciara->cols, sciara->substates->St, sciara->substates->St_next);
+    swap_pointers(sciara->substates->Slt, sciara->substates->Slt_next);
+    swap_pointers(sciara->substates->St,  sciara->substates->St_next);
 
     // Apply the computeOutflows kernel to the whole domain
 #pragma omp parallel for
@@ -450,7 +439,7 @@ int main(int argc, char **argv)
             sciara->rows, 
             sciara->cols, 
             Xi, 
-            Xj, 
+            Xj,
             sciara->substates->Sz, 
             sciara->substates->Slt, 
             sciara->substates->St, 
@@ -475,16 +464,10 @@ int main(int argc, char **argv)
             sciara->substates->St, 
             sciara->substates->St_next, 
             sciara->substates->Sf);
-#pragma omp parallel for
-    for (int i = i_start; i < i_end; i++)
-      for (int j = j_start; j < j_end; j++)
-        update(i, j, sciara->rows, sciara->cols, sciara->substates->Slt, sciara->substates->Slt_next);
-#pragma omp parallel for
-    for (int i = i_start; i < i_end; i++)
-      for (int j = j_start; j < j_end; j++)
+    swap_pointers(sciara->substates->Slt, sciara->substates->Slt_next);
+    swap_pointers(sciara->substates->St,  sciara->substates->St_next);
 
-
-        // Apply the computeNewTemperatureAndSolidification kernel to the whole domain
+    // Apply the computeNewTemperatureAndSolidification kernel to the whole domain
 #pragma omp parallel for
         for (int i = i_start; i < i_end; i++)
           for (int j = j_start; j < j_end; j++)
@@ -508,31 +491,22 @@ int main(int argc, char **argv)
                 sciara->substates->Sf, 
                 sciara->substates->Msl, 
                 sciara->substates->Mb);
-#pragma omp parallel for
-    for (int i = i_start; i < i_end; i++)
-      for (int j = j_start; j < j_end; j++)
-        update(i, j, sciara->rows, sciara->cols, sciara->substates->Sz, sciara->substates->Sz_next);
-#pragma omp parallel for
-    for (int i = i_start; i < i_end; i++)
-      for (int j = j_start; j < j_end; j++)
-        update(i, j, sciara->rows, sciara->cols, sciara->substates->Slt, sciara->substates->Slt_next);
-#pragma omp parallel for
-    for (int i = i_start; i < i_end; i++)
-      for (int j = j_start; j < j_end; j++)
-        update(i, j, sciara->rows, sciara->cols, sciara->substates->St, sciara->substates->St_next);
-
-    double cl_time = static_cast<double>(cl_timer.getTimeMilliseconds()) / 1000.0;
-    printf("Elapsed time: %lf [s]\n", cl_time);
-
-    printf("Saving output to %s...\n", argv[OUTPUT_PATH_ID]);
-    saveConfiguration(argv[OUTPUT_PATH_ID], sciara);
-
-    printf("Releasing memory...\n");
-    deallocateSubstates(sciara);
-    delete sciara;
-
-    return 0;
+        swap_pointers(sciara->substates->Sz,  sciara->substates->Sz_next);
+        swap_pointers(sciara->substates->Slt, sciara->substates->Slt_next);
+        swap_pointers(sciara->substates->St,  sciara->substates->St_next);
   }
+
+  double cl_time = static_cast<double>(cl_timer.getTimeMilliseconds()) / 1000.0;
+  printf("Elapsed time: %lf [s]\n", cl_time);
+
+  printf("Saving output to %s...\n", argv[OUTPUT_PATH_ID]);
+  saveConfiguration(argv[OUTPUT_PATH_ID], sciara);
+
+  printf("Releasing memory...\n");
+  deallocateSubstates(sciara);
+  delete sciara;
+
+  return 0;
 }
 
 //============================================================================

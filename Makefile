@@ -19,8 +19,8 @@ default:all
 
 # compila le versioni seriale e OpenMP
 all:
-	$(CPPC) *.cpp -o $(EXEC) -fopenmp -O3
-	$(CPPC) *.cpp -o $(EXEC_SERIAL) -O3
+	$(CPPC) *.cpp -o $(EXEC_SERIAL) -g
+#	$(CPPC) *.cpp -o $(EXEC) -fopenmp -O3
 
 
 # esegue la simulazione OpenMP

@@ -6,6 +6,10 @@
 #include <math.h>
 #include <stdlib.h>
 
+#define NUMBER_OF_OUTFLOWS 8
+
+#define MIN_ALG		0
+#define PROP_ALG	1
 
 typedef struct
 {
@@ -24,6 +28,10 @@ typedef struct
 
 typedef struct
 {
+	int    maximum_steps;	//... go for maximum_steps steps (0 for loop)
+	double stopping_threshold;	//se negativa non si effettua il controllo sulla pausa
+	int    refreshing_step;	//I thread grafici vengono avviati ogni repaint_step passi
+	double thickness_visual_threshold;	//in LCMorphology viene disegnato nero solo se mMD > visual_threshold
 	double Pclock;	//AC clock [s]
 	double Pc;		//cell side
 	double Pac;		//area of the cell
@@ -42,6 +50,7 @@ typedef struct
 	double Pepsilon;	//emissivity
 	double Psigma;	//Stephen-Boltzamnn constant
 	double Pcv;		//Specific heat
+	int algorithm;	
 	int rows;
 	int cols;
 	double rad2;
@@ -55,6 +64,12 @@ typedef struct
 	Substates * substates;
 
 } Sciara;
+
+// ----------------------------------------------------------------------------
+// Memory allocation function for 2D linearized buffers
+// ----------------------------------------------------------------------------
+void allocateSubstates(Sciara *sciara);
+void deallocateSubstates(Sciara *sciara);
 
 
 // bool** MakeBorder(int ly, int lx, bool **Border, double** mQ)

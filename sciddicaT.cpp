@@ -36,36 +36,6 @@
 #define BUF_GET(M, rows, columns, n, i, j) ( M[( ((n)*(rows)*(columns)) + ((i)*(columns)) + (j) )] )
 
 // ----------------------------------------------------------------------------
-// Memory allocation function for 2D linearized buffers
-// ----------------------------------------------------------------------------
-void allocateSubstates(Sciara *sciara)
-{
-	sciara->substates->Sz       = new (std::nothrow) double[sciara->rows*sciara->cols];
-  sciara->substates->Sz_next  = new (std::nothrow) double[sciara->rows*sciara->cols];
-	sciara->substates->Slt      = new (std::nothrow) double[sciara->rows*sciara->cols];
-  sciara->substates->Slt_next = new (std::nothrow) double[sciara->rows*sciara->cols];
-	sciara->substates->St       = new (std::nothrow) double[sciara->rows*sciara->cols];
-  sciara->substates->St_next  = new (std::nothrow) double[sciara->rows*sciara->cols];
-	sciara->substates->Sf       = new (std::nothrow) double[sciara->rows*sciara->cols*NUMBER_OF_OUTFLOWS];
-	sciara->substates->Mv       = new (std::nothrow) int[sciara->rows*sciara->cols];
-	sciara->substates->Mb       = new (std::nothrow) bool[sciara->rows*sciara->cols];
-	sciara->substates->Msl      = new (std::nothrow) double[sciara->rows*sciara->cols];
-}
-
-void deallocateSubstates(Sciara *sciara)
-{
-	delete[] sciara->substates->Sz;
-  delete[] sciara->substates->Sz_next;
-	delete[] sciara->substates->Slt;
-  delete[] sciara->substates->Slt_next;
-	delete[] sciara->substates->St;
-  delete[] sciara->substates->St;
-	delete[] sciara->substates->Sf;
-	delete[] sciara->substates->Mv;
-	delete[] sciara->substates->Mb;
-	delete[] sciara->substates->Msl;
-}
-// ----------------------------------------------------------------------------
 // init kernel, called once before the simulation loop
 // ----------------------------------------------------------------------------
 
@@ -139,7 +109,6 @@ void update(
 {
   SET(S,c,i,j,GET(S_next,c,i,j)); // S[i][j]=S_next[i][j];
 }
-
 
 void emitLava(
     int i,
@@ -399,6 +368,10 @@ int main(int argc, char **argv)
 
   // Input data 
   int max_steps = atoi(argv[MAX_STEPS_ID]);
+
+  char *input_path = argv[CONFIG_PATH_ID];
+  std::cout << "max_steps = " << max_steps << std::endl;
+  std::cout << "input_path = " << input_path << std::endl;
   loadConfiguration(argv[CONFIG_PATH_ID], sciara);
   saveConfiguration(argv[OUTPUT_PATH_ID], sciara);
   return 0;
@@ -563,27 +536,17 @@ int main(int argc, char **argv)
 }
 
 //============================================================================
-/*
 
-   bool stopCondition() {
-   if (sciara->elapsed_time >= sciara->effusion_duration)
-   return true;
-
-//La simulazione pu� continuare
-return false;
-}
-
-void steering() {
-for (int i = 0; i < NUMBER_OF_OUTFLOWS; ++i)
-calInitSubstate2Dr(model, sciara->substates->f[i], 0);
-
-for (int i = 0; i < sciara->rows; i++)
-for (int j = 0; j < sciara->cols; j++)
-if (calGet2Db(model, sciara->substates->Mb, i, j) == true) {
-calSet2Dr(model, sciara->substates->Slt, i, j, 0);
-calSet2Dr(model, sciara->substates->St, i, j, 0);
-}
-sciara->elapsed_time += sciara->Pclock;
-//	updateVentsEmission(model);
-}
-*/
+// void steering() {
+//   for (int i = 0; i < NUMBER_OF_OUTFLOWS; ++i)
+//     calInitSubstate2Dr(model, sciara->substates->f[i], 0);
+// 
+//   for (int i = 0; i < sciara->rows; i++)
+//     for (int j = 0; j < sciara->cols; j++)
+//       if (calGet2Db(model, sciara->substates->Mb, i, j) == true) {
+//         calSet2Dr(model, sciara->substates->Slt, i, j, 0);
+//         calSet2Dr(model, sciara->substates->St, i, j, 0);
+//       }
+//   sciara->elapsed_time += sciara->Pclock;
+//   //	updateVentsEmission(model);
+// }

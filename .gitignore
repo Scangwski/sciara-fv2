@@ -1,3 +1,4 @@
+*.o
 data/2006_OUT
 sciara_omp
 sciara_serial

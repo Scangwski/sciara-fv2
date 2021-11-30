@@ -1,4 +1,6 @@
 //---------------------------------------------------------------------------
+#include <iostream>
+#include <new>
 #include "io.h"
 #include "cal2DBuffer.h"
 #include "cal2DBufferIO.h"
@@ -67,128 +69,49 @@ int loadParameters(char const * path, Sciara* sciara) {
 
   fgetpos(f, &position);
 
-  fscanf(f, "%s", str);
-  if (strcmp(str, "maximum_steps_(0_for_loop)") != 0)
-    return FILE_ERROR;
-  fscanf(f, "%s", str);
-
-  fscanf(f, "%s", str);
-  if (strcmp(str, "stopping_threshold_(height)") != 0)
-    return FILE_ERROR;
-  fscanf(f, "%s", str);
-  fscanf(f, "%s", str);
-  if (strcmp(str, "refreshing_step") != 0)
-    return FILE_ERROR;
-  fscanf(f, "%s", str);
-  fscanf(f, "%s", str);
-  if (strcmp(str, "thickness_visual_threshold") != 0)
-    return FILE_ERROR;
-  fscanf(f, "%s", str);
-  fscanf(f, "%s", str);
-  if (strcmp(str, "Pclock") != 0)
-    return FILE_ERROR;
-  fscanf(f, "%s", str);
-  fscanf(f, "%s", str);
-  if (strcmp(str, "PTsol") != 0)
-    return FILE_ERROR;
-  fscanf(f, "%s", str);
-  fscanf(f, "%s", str);
-  if (strcmp(str, "PTvent") != 0)
-    return FILE_ERROR;
-  fscanf(f, "%s", str);
-  fscanf(f, "%s", str);
-  if (strcmp(str, "Pr(Tsol)") != 0)
-    return FILE_ERROR;
-  fscanf(f, "%s", str);
-  fscanf(f, "%s", str);
-  if (strcmp(str, "Pr(Tvent)") != 0)
-    return FILE_ERROR;
-  fscanf(f, "%s", str);
-  fscanf(f, "%s", str);
-  if (strcmp(str, "Phc(Tsol)") != 0)
-    return FILE_ERROR;
-  fscanf(f, "%s", str);
-  fscanf(f, "%s", str);
-  if (strcmp(str, "Phc(Tvent)") != 0)
-    return FILE_ERROR;
-  fscanf(f, "%s", str);
-  fscanf(f, "%s", str);
-  if (strcmp(str, "Pcool") != 0)
-    return FILE_ERROR;
-  fscanf(f, "%s", str);
-  fscanf(f, "%s", str);
-  if (strcmp(str, "Prho") != 0)
-    return FILE_ERROR;
-  fscanf(f, "%s", str);
-  fscanf(f, "%s", str);
-  if (strcmp(str, "Pepsilon") != 0)
-    return FILE_ERROR;
-  fscanf(f, "%s", str);
-  fscanf(f, "%s", str);
-  if (strcmp(str, "Psigma") != 0)
-    return FILE_ERROR;
-  fscanf(f, "%s", str);
-  fscanf(f, "%s", str);
-  if (strcmp(str, "Pcv") != 0)
-    return FILE_ERROR;
-  fscanf(f, "%s", str);
-  fscanf(f, "%s", str);
-  if (strcmp(str, "algorithm") != 0)
-    return FILE_ERROR;
-  fscanf(f, "%s", str);
-  if (strcmp(str, "MIN") != 0 && strcmp(str, "PROP") != 0)
-    return FILE_ERROR;
+  fscanf(f, "%s", str); if (strcmp(str, "maximum_steps_(0_for_loop)") != 0) return FILE_ERROR; fscanf(f, "%s", str); 
+  fscanf(f, "%s", str); if (strcmp(str, "stopping_threshold_(height)") != 0) return FILE_ERROR; fscanf(f, "%s", str);
+  fscanf(f, "%s", str); if (strcmp(str, "refreshing_step") != 0) return FILE_ERROR; fscanf(f, "%s", str);
+  fscanf(f, "%s", str); if (strcmp(str, "thickness_visual_threshold") != 0) return FILE_ERROR; fscanf(f, "%s", str);
+  fscanf(f, "%s", str); if (strcmp(str, "Pclock") != 0) return FILE_ERROR; fscanf(f, "%s", str);
+  fscanf(f, "%s", str); if (strcmp(str, "PTsol") != 0) return FILE_ERROR; fscanf(f, "%s", str);
+  fscanf(f, "%s", str); if (strcmp(str, "PTvent") != 0) return FILE_ERROR; fscanf(f, "%s", str);
+  fscanf(f, "%s", str); if (strcmp(str, "Pr(Tsol)") != 0) return FILE_ERROR; fscanf(f, "%s", str);
+  fscanf(f, "%s", str); if (strcmp(str, "Pr(Tvent)") != 0) return FILE_ERROR; fscanf(f, "%s", str);
+  fscanf(f, "%s", str); if (strcmp(str, "Phc(Tsol)") != 0) return FILE_ERROR; fscanf(f, "%s", str);
+  fscanf(f, "%s", str); if (strcmp(str, "Phc(Tvent)") != 0) return FILE_ERROR; fscanf(f, "%s", str);
+  fscanf(f, "%s", str); if (strcmp(str, "Pcool") != 0) return FILE_ERROR; fscanf(f, "%s", str);
+  fscanf(f, "%s", str); if (strcmp(str, "Prho") != 0) return FILE_ERROR; fscanf(f, "%s", str);
+  fscanf(f, "%s", str); if (strcmp(str, "Pepsilon") != 0) return FILE_ERROR; fscanf(f, "%s", str);
+  fscanf(f, "%s", str); if (strcmp(str, "Psigma") != 0) return FILE_ERROR; fscanf(f, "%s", str);
+  fscanf(f, "%s", str); if (strcmp(str, "Pcv") != 0) return FILE_ERROR; fscanf(f, "%s", str);
+  fscanf(f, "%s", str); if (strcmp(str, "algorithm") != 0) return FILE_ERROR; fscanf(f, "%s", str);
+  if (strcmp(str, "MIN") != 0 && strcmp(str, "PROP") != 0) return FILE_ERROR;
 
   fsetpos(f, &position);
 
-  //fake readings
-  fscanf(f, "%s", str);
-  fscanf(f, "%s", str);
-  fscanf(f, "%s", str);
-  fscanf(f, "%s", str);
-  fscanf(f, "%s", str);
-  fscanf(f, "%s", str);
-  fscanf(f, "%s", str);
-  fscanf(f, "%s", str);
-
-  fscanf(f, "%s", str);
-  fscanf(f, "%s", str);
-  sciara->Pclock = atof(str);
-  fscanf(f, "%s", str);
-  fscanf(f, "%s", str);
-  sciara->PTsol = atof(str);
-  fscanf(f, "%s", str);
-  fscanf(f, "%s", str);
-  sciara->PTvent = atof(str);
-  fscanf(f, "%s", str);
-  fscanf(f, "%s", str);
-  sciara->Pr_Tsol = atof(str);
-  fscanf(f, "%s", str);
-  fscanf(f, "%s", str);
-  sciara->Pr_Tvent = atof(str);
-  fscanf(f, "%s", str);
-  fscanf(f, "%s", str);
-  sciara->Phc_Tsol = atof(str);
-  fscanf(f, "%s", str);
-  fscanf(f, "%s", str);
-  sciara->Phc_Tvent = atof(str);
-  fscanf(f, "%s", str);
-  fscanf(f, "%s", str);
-  sciara->Pcool = atof(str);
-  fscanf(f, "%s", str);
-  fscanf(f, "%s", str);
-  sciara->Prho = atof(str);
-  fscanf(f, "%s", str);
-  fscanf(f, "%s", str);
-  sciara->Pepsilon = atof(str);
-  fscanf(f, "%s", str);
-  fscanf(f, "%s", str);
-  sciara->Psigma = atof(str);
-  fscanf(f, "%s", str);
-  fscanf(f, "%s", str);
-  sciara->Pcv = atof(str);
-  fscanf(f, "%s", str);
-  fscanf(f, "%s", str);
+	fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->maximum_steps = atoi(str);
+	fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->stopping_threshold = atof(str);
+	fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->refreshing_step = atoi(str);
+	fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->thickness_visual_threshold = atof(str);
+  fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->Pclock = atof(str);
+  fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->PTsol = atof(str);
+  fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->PTvent = atof(str);
+  fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->Pr_Tsol = atof(str);
+  fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->Pr_Tvent = atof(str);
+  fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->Phc_Tsol = atof(str);
+  fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->Phc_Tvent = atof(str);
+  fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->Pcool = atof(str);
+  fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->Prho = atof(str);
+  fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->Pepsilon = atof(str);
+  fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->Psigma = atof(str);
+  fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->Pcv = atof(str);
+  fscanf(f, "%s", str); fscanf(f, "%s", str);
+  if (strcmp(str, "PROP") == 0)
+    sciara->algorithm = PROP_ALG;
+  else
+    if (strcmp(str, "MIN") == 0)
+      sciara->algorithm = MIN_ALG;
 
   fclose(f);
   return FILE_OK;
@@ -199,6 +122,10 @@ int saveParameters(char* path, Sciara* sciara) {
   if ((f = fopen(path, "w")) == NULL)
     return FILE_ERROR;
 
+	fprintf(f, "maximum_steps_(0_for_loop)	%d\n", sciara->maximum_steps);
+	fprintf(f, "stopping_threshold_(height)	%f\n", sciara->stopping_threshold);
+	fprintf(f, "refreshing_step			%d\n", sciara->refreshing_step);
+	fprintf(f, "thickness_visual_threshold	%f\n", sciara->thickness_visual_threshold);
   fprintf(f, "Pclock			%f\n", sciara->Pclock);
   fprintf(f, "PTsol				%f\n", sciara->PTsol);
   fprintf(f, "PTvent			%f\n", sciara->PTvent);
@@ -211,6 +138,11 @@ int saveParameters(char* path, Sciara* sciara) {
   fprintf(f, "Pepsilon		%f\n", sciara->Pepsilon);
   fprintf(f, "Psigma			%e\n", sciara->Psigma);
   fprintf(f, "Pcv				  %f\n", sciara->Pcv);
+	if (sciara->algorithm == PROP_ALG)
+		fprintf(f, "algorithm			PROP\n");
+	else
+		if (sciara->algorithm == MIN_ALG)
+			fprintf(f, "algorithm			MIN\n");
 
   fclose(f);
   return FILE_OK;
@@ -234,7 +166,8 @@ void printParameters(Sciara* sciara) {
   printf("Pcv			    %f\n", sciara->Pcv);
 }
 //---------------------------------------------------------------------------
-int loadMorphology(char* path, Sciara* sciara) {
+int loadMorphology(char* path, Sciara* sciara) 
+{
   FILE *input_file;
 
   if ((input_file = fopen(path, "r")) == NULL)
@@ -247,11 +180,16 @@ int loadMorphology(char* path, Sciara* sciara) {
   }
   initGISInfoNODATA0(gis_info_Sz, gis_info_nodata0);
 
-  //	sciara->Pa			= gis_info_Sz.cell_size;
-  //	sciara->Ple			= 2./sqrt(3.) * sciara->Pa;
-  //	sciara->Pae			= 3 * sciara->Ple * sciara->Pa;
-  sciara->Pc = gis_info_Sz.cell_size;
-  sciara->Pac = sciara->Pc * sciara->Pc;
+	sciara->cols = gis_info_Sz.ncols;
+	sciara->rows = gis_info_Sz.nrows;
+//sciara->Pa	 = gis_info_Sz.cell_size;
+//sciara->Ple	 = 2./sqrt(3.) * sciara->Pa;
+//sciara->Pae	 = 3 * sciara->Ple * sciara->Pa;
+  sciara->Pc   = gis_info_Sz.cell_size;
+  sciara->Pac  = sciara->Pc * sciara->Pc;
+
+  // state variables allocation
+  allocateSubstates(sciara);
 
   //legge il file contenente la morfologia
   calfLoadMatrix2Dr(sciara->substates->Sz, sciara->rows, sciara->cols, input_file);
@@ -262,9 +200,10 @@ int loadMorphology(char* path, Sciara* sciara) {
   return FILE_OK;
 }
 //---------------------------------------------------------------------------
-int loadVents(char* path, Sciara* sciara) {
+int loadVents(char* path, Sciara* sciara) 
+{
   FILE *input_file;
-  if ((input_file = fopen(path, "r")) == NULL)
+  if ((input_file = fopen(path,"r")) == NULL)
     return FILE_ERROR;
 
   int gis_info_status = LeggiGISInfo(gis_info_generic, input_file);
@@ -275,6 +214,7 @@ int loadVents(char* path, Sciara* sciara) {
   }
 
   //Alloca e legge
+	sciara->substates->Mv = calAllocBuffer2Di(sciara->rows,sciara->cols);
   calfLoadMatrix2Di(sciara->substates->Mv, sciara->rows, sciara->cols, input_file);
   fclose(input_file);
 
@@ -286,7 +226,8 @@ int loadVents(char* path, Sciara* sciara) {
   return FILE_OK;
 }
 //---------------------------------------------------------------------------
-int loadEmissionRate(char *path, Sciara* sciara) {
+int loadEmissionRate(char *path, Sciara* sciara) 
+{
   FILE *input_file;
   if ((input_file = fopen(path, "r")) == NULL)
     return FILE_ERROR;
@@ -351,13 +292,15 @@ int loadAlreadyAllocatedMap(char *path, double* S, double* nS, int lx, int ly) {
   return FILE_OK;
 }
 //---------------------------------------------------------------------------------------------------
-int loadConfiguration(char const *path, Sciara* sciara) {
+int loadConfiguration(char const *path, Sciara* sciara)
+{
   char configuration_path[1024];
   //    int   gis_info_status;
   //    int   gis_info_verify;
 
   //Apre il file di configurazione
-  if (!loadParameters(path, sciara)) {
+  if (!loadParameters(path, sciara)) 
+  {
     strcat((char*)path, "_000000000000.cfg");
     if (!loadParameters(path, sciara))
       return FILE_ERROR;
@@ -396,8 +339,9 @@ int loadConfiguration(char const *path, Sciara* sciara) {
 
   return FILE_OK;
 }
-
-int saveConfiguration(char const *path, Sciara* sciara) {
+//---------------------------------------------------------------------------------------------------
+int saveConfiguration(char const *path, Sciara* sciara)
+{
   //    int   gis_info_status;
   //    int   gis_info_verify;
 

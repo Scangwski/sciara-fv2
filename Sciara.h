@@ -6,6 +6,8 @@
 #include <math.h>
 #include <stdlib.h>
 
+#define VON_NEUMANN_NEIGHBORS 5
+#define MOORE_NEIGHBORS 9
 #define NUMBER_OF_OUTFLOWS 8
 
 #define MIN_ALG		0
@@ -65,51 +67,15 @@ typedef struct
 
 } Sciara;
 
+extern int Xi[];
+extern int Xj[];
+
+void MakeBorder(Sciara *sciara);
+
 // ----------------------------------------------------------------------------
 // Memory allocation function for 2D linearized buffers
 // ----------------------------------------------------------------------------
 void allocateSubstates(Sciara *sciara);
 void deallocateSubstates(Sciara *sciara);
-
-
-// bool** MakeBorder(int ly, int lx, bool **Border, double** mQ)
-// {
-//   int x, y;
-// 
-//   //prima riga
-//   y = 0;
-//   for (x = 0; x < lx; x++ )
-//     if (mQ[x][y] >= 0)
-//       Border[x][y] = true;
-//   //ultima riga
-//   y = ly - 1;
-//   for (x = 0; x < lx; x++ )
-//     if (mQ[x][y] >= 0)
-//       Border[x][y] = true;
-//   //prima colonna x = 0;
-//   for (y = 0; y < ly; y++ )
-//     if (mQ[x][y] >= 0)
-//       Border[x][y] = true;
-//   //ultima colonna
-//   x = lx - 1;
-//   for (y = 0; y < ly; y++ )
-//     if (mQ[x][y] >= 0)
-//       Border[x][y] = true;
-//   //il resto
-//   for (int x = 1; x < lx-1; x++)
-//     for (int y = 1; y < ly-1; y++)
-//       if (mQ[x][y] >= 0)
-//       {
-//         mooreNeighbors(x, y, neigh);
-//         for (int i = 1; i < MOORE_NEIGHBORS; i++ )
-//           if (mQ[neigh[i].x][neigh[i].y] < 0)
-//           {
-//             Border[neigh[0].x][neigh[0].y] = true;
-//             break;
-//           }
-//       }
-// 
-//   return Border;
-// }
 
 #endif /* CA_H_ */

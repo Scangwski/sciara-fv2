@@ -1,4 +1,4 @@
 *.o
-data/2006_OUT
+*output*
 sciara_omp
 sciara_serial

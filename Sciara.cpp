@@ -1,4 +1,5 @@
 #include "Sciara.h"
+#include "cal2DBuffer.h"
 
 // ----------------------------------------------------------------------------
 // Memory allocation function for 2D linearized buffers
@@ -19,14 +20,59 @@ void allocateSubstates(Sciara *sciara)
 
 void deallocateSubstates(Sciara *sciara)
 {
-	delete[] sciara->substates->Sz;
-  delete[] sciara->substates->Sz_next;
-	delete[] sciara->substates->Slt;
-  delete[] sciara->substates->Slt_next;
-	delete[] sciara->substates->St;
-  delete[] sciara->substates->St;
-	delete[] sciara->substates->Sf;
-	delete[] sciara->substates->Mv;
-	delete[] sciara->substates->Mb;
-	delete[] sciara->substates->Msl;
+	if(sciara->substates->Sz)       delete[] sciara->substates->Sz;
+  if(sciara->substates->Sz_next)  delete[] sciara->substates->Sz_next;
+	if(sciara->substates->Slt)      delete[] sciara->substates->Slt;
+  if(sciara->substates->Slt_next) delete[] sciara->substates->Slt_next;
+	if(sciara->substates->St)       delete[] sciara->substates->St;
+  if(sciara->substates->St_next)  delete[] sciara->substates->St_next;
+	if(sciara->substates->Sf)       delete[] sciara->substates->Sf;
+	//if(sciara->substates->Mv)       delete[] sciara->substates->Mv;
+	if(sciara->substates->Mb)       delete[] sciara->substates->Mb;
+	if(sciara->substates->Msl)      delete[] sciara->substates->Msl;
+}
+
+int Xi[] = {0, -1,  0,  0,  1, -1,  1,  1, -1}; // Xj: Moore neighborhood row coordinates (see below)
+int Xj[] = {0,  0, -1,  1,  0, -1, -1,  1,  1}; // Xj: Moore neighborhood col coordinates (see below)
+
+void MakeBorder(Sciara *sciara) 
+{
+	int j, i;
+
+	//prima riga
+	i = 0;
+	for (j = 0; j < sciara->cols; j++)
+		if (calGetMatrixElement(sciara->substates->Sz, sciara->cols, i, j) >= 0)
+			calSetMatrixElement(sciara->substates->Mb, sciara->cols, i, j, true);
+
+	//ultima riga
+	i = sciara->rows - 1;
+	for (j = 0; j < sciara->cols; j++)
+		if (calGetMatrixElement(sciara->substates->Sz, sciara->cols, i, j) >= 0)
+			calSetMatrixElement(sciara->substates->Mb, sciara->cols, i, j, true);
+
+	//prima colonna
+	j = 0;
+	for (i = 0; i < sciara->rows; i++)
+		if (calGetMatrixElement(sciara->substates->Sz, sciara->cols, i, j) >= 0)
+			calSetMatrixElement(sciara->substates->Mb, sciara->cols, i, j, true);
+  
+	//ultima colonna
+	j = sciara->cols - 1;
+	for (i = 0; i < sciara->rows; i++)
+		if (calGetMatrixElement(sciara->substates->Sz, sciara->cols, i, j) >= 0)
+			calSetMatrixElement(sciara->substates->Mb, sciara->cols, i, j, true);
+	
+	//il resto
+	for (int i = 1; i < sciara->rows - 1; i++)
+		for (int j = 1; j < sciara->cols - 1; j++)
+			if (calGetMatrixElement(sciara->substates->Sz, sciara->cols, i, j) >= 0) {
+				for (int k = 1; k < MOORE_NEIGHBORS; k++)
+					if (calGetMatrixElement(sciara->substates->Sz, sciara->cols, i+Xi[k], j+Xj[k]) < 0)
+          {
+			      calSetMatrixElement(sciara->substates->Mb, sciara->cols, i, j, true);
+						break;
+					}
+			}
+
 }

@@ -3,9 +3,9 @@ ifndef CPPC
 	CPPC=g++
 endif
 
-INPUT_CONFIG="./data/2006/2006_000000000000.cfg"
-OUTPUT_CONFIG="./data/2006_OUT/output_2006"
-STEPS=100
+INPUT_CONFIG="./data/2001/2001_000000000000.cfg"
+OUTPUT_CONFIG="./data/2001/output_2001"
+STEPS=199
 
 # vim's :Termdebug string
 # Run ./data/2006/2006_000000000000.cfg ./data/2006_OUT/output_2006 100
@@ -22,7 +22,7 @@ default:all
 
 # compila le versioni seriale e OpenMP
 all:
-	$(CPPC) *.cpp -o $(EXEC_SERIAL) -g
+	$(CPPC) *.cpp -o $(EXEC_SERIAL) -O3 -g
 #	$(CPPC) *.cpp -o $(EXEC) -fopenmp -O3
 
 

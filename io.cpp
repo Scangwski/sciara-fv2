@@ -10,8 +10,6 @@
 //---------------------------------------------------------------------------
 // Autosave state variables
 bool storing = false;                 //se è true avviene il salvataggio automatico
-int storing_step = 0;                 //Ogni storing_step passi salva la configurazione
-char storing_path[1024] = "./config"; //percorso in cui viene salvata la configurazione
 TGISInfo gis_info_Sz;
 TGISInfo gis_info_generic;
 TGISInfo gis_info_nodata0;
@@ -37,7 +35,7 @@ void saveMatrixi(int * M, char configuration_path[1024],Sciara * sciara){
 int SaveConfigurationEmission(Sciara* sciara, char const *path, char const *name)
 {
   char s[1024];
-  if (ConfigurationFileSavingPath((char*)path, sciara->step, (char*)name, ".txt", s) == false)
+  if (ConfigurationFileSavingPath((char*)path, sciara->simulation->step, (char*)name, ".txt", s) == false)
     return FILE_ERROR;
   else
   {
@@ -90,28 +88,28 @@ int loadParameters(char const * path, Sciara* sciara) {
 
   fsetpos(f, &position);
 
-	fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->maximum_steps = atoi(str);
-	fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->stopping_threshold = atof(str);
-	fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->refreshing_step = atoi(str);
-	fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->thickness_visual_threshold = atof(str);
-  fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->Pclock = atof(str);
-  fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->PTsol = atof(str);
-  fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->PTvent = atof(str);
-  fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->Pr_Tsol = atof(str);
-  fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->Pr_Tvent = atof(str);
-  fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->Phc_Tsol = atof(str);
-  fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->Phc_Tvent = atof(str);
-  fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->Pcool = atof(str);
-  fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->Prho = atof(str);
-  fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->Pepsilon = atof(str);
-  fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->Psigma = atof(str);
-  fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->Pcv = atof(str);
+	fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->simulation->maximum_steps = atoi(str);
+	fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->simulation->stopping_threshold = atof(str);
+	fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->simulation->refreshing_step = atoi(str);
+	fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->simulation->thickness_visual_threshold = atof(str);
+  fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->parameters->Pclock = atof(str);
+  fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->parameters->PTsol = atof(str);
+  fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->parameters->PTvent = atof(str);
+  fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->parameters->Pr_Tsol = atof(str);
+  fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->parameters->Pr_Tvent = atof(str);
+  fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->parameters->Phc_Tsol = atof(str);
+  fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->parameters->Phc_Tvent = atof(str);
+  fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->parameters->Pcool = atof(str);
+  fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->parameters->Prho = atof(str);
+  fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->parameters->Pepsilon = atof(str);
+  fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->parameters->Psigma = atof(str);
+  fscanf(f, "%s", str); fscanf(f, "%s", str); sciara->parameters->Pcv = atof(str);
   fscanf(f, "%s", str); fscanf(f, "%s", str);
   if (strcmp(str, "PROP") == 0)
-    sciara->algorithm = PROP_ALG;
+    sciara->parameters->algorithm = PROP_ALG;
   else
     if (strcmp(str, "MIN") == 0)
-      sciara->algorithm = MIN_ALG;
+      sciara->parameters->algorithm = MIN_ALG;
 
   fclose(f);
   return FILE_OK;
@@ -122,26 +120,26 @@ int saveParameters(char* path, Sciara* sciara) {
   if ((f = fopen(path, "w")) == NULL)
     return FILE_ERROR;
 
-	fprintf(f, "maximum_steps_(0_for_loop)	%d\n", sciara->maximum_steps);
-	fprintf(f, "stopping_threshold_(height)	%f\n", sciara->stopping_threshold);
-	fprintf(f, "refreshing_step			%d\n", sciara->refreshing_step);
-	fprintf(f, "thickness_visual_threshold	%f\n", sciara->thickness_visual_threshold);
-  fprintf(f, "Pclock			%f\n", sciara->Pclock);
-  fprintf(f, "PTsol				%f\n", sciara->PTsol);
-  fprintf(f, "PTvent			%f\n", sciara->PTvent);
-  fprintf(f, "Pr(Tsol)		%f\n", sciara->Pr_Tsol);
-  fprintf(f, "Pr(Tvent)		%f\n", sciara->Pr_Tvent);
-  fprintf(f, "Phc(Tsol)		%f\n", sciara->Phc_Tsol);
-  fprintf(f, "Phc(Tvent)	%f\n", sciara->Phc_Tvent);
-  fprintf(f, "Pcool				%f\n", sciara->Pcool);
-  fprintf(f, "Prho				%f\n", sciara->Prho);
-  fprintf(f, "Pepsilon		%f\n", sciara->Pepsilon);
-  fprintf(f, "Psigma			%e\n", sciara->Psigma);
-  fprintf(f, "Pcv				  %f\n", sciara->Pcv);
-	if (sciara->algorithm == PROP_ALG)
+	fprintf(f, "maximum_steps_(0_for_loop)	%d\n", sciara->simulation->maximum_steps);
+	fprintf(f, "stopping_threshold_(height)	%f\n", sciara->simulation->stopping_threshold);
+	fprintf(f, "refreshing_step			%d\n",         sciara->simulation->refreshing_step);
+	fprintf(f, "thickness_visual_threshold	%f\n", sciara->simulation->thickness_visual_threshold);
+  fprintf(f, "Pclock			%f\n", sciara->parameters->Pclock);
+  fprintf(f, "PTsol				%f\n", sciara->parameters->PTsol);
+  fprintf(f, "PTvent			%f\n", sciara->parameters->PTvent);
+  fprintf(f, "Pr(Tsol)		%f\n", sciara->parameters->Pr_Tsol);
+  fprintf(f, "Pr(Tvent)		%f\n", sciara->parameters->Pr_Tvent);
+  fprintf(f, "Phc(Tsol)		%f\n", sciara->parameters->Phc_Tsol);
+  fprintf(f, "Phc(Tvent)	%f\n", sciara->parameters->Phc_Tvent);
+  fprintf(f, "Pcool				%f\n", sciara->parameters->Pcool);
+  fprintf(f, "Prho				%f\n", sciara->parameters->Prho);
+  fprintf(f, "Pepsilon		%f\n", sciara->parameters->Pepsilon);
+  fprintf(f, "Psigma			%e\n", sciara->parameters->Psigma);
+  fprintf(f, "Pcv				  %f\n", sciara->parameters->Pcv);
+	if (sciara->parameters->algorithm == PROP_ALG)
 		fprintf(f, "algorithm			PROP\n");
 	else
-		if (sciara->algorithm == MIN_ALG)
+		if (sciara->parameters->algorithm == MIN_ALG)
 			fprintf(f, "algorithm			MIN\n");
 
   fclose(f);
@@ -152,18 +150,18 @@ void printParameters(Sciara* sciara) {
   printf("---------------------------------------------\n");
   printf("Paramater		Value\n");
   printf("---------------------------------------------\n");
-  printf("Pclock			%f\n", sciara->Pclock);
-  printf("PTsol			  %f\n", sciara->PTsol);
-  printf("PTvent			%f\n", sciara->PTvent);
-  printf("Pr(Tsol)		%f\n", sciara->Pr_Tsol);
-  printf("Pr(Tvent)		%f\n", sciara->Pr_Tvent);
-  printf("Phc(Tsol)		%f\n", sciara->Phc_Tsol);
-  printf("Phc(Tvent)	%f\n", sciara->Phc_Tvent);
-  printf("Pcool			  %f\n", sciara->Pcool);
-  printf("Prho			  %f\n", sciara->Prho);
-  printf("Pepsilon		%f\n", sciara->Pepsilon);
-  printf("Psigma			%e\n", sciara->Psigma);
-  printf("Pcv			    %f\n", sciara->Pcv);
+  printf("Pclock			%f\n", sciara->parameters->Pclock);
+  printf("PTsol			  %f\n", sciara->parameters->PTsol);
+  printf("PTvent			%f\n", sciara->parameters->PTvent);
+  printf("Pr(Tsol)		%f\n", sciara->parameters->Pr_Tsol);
+  printf("Pr(Tvent)		%f\n", sciara->parameters->Pr_Tvent);
+  printf("Phc(Tsol)		%f\n", sciara->parameters->Phc_Tsol);
+  printf("Phc(Tvent)	%f\n", sciara->parameters->Phc_Tvent);
+  printf("Pcool			  %f\n", sciara->parameters->Pcool);
+  printf("Prho			  %f\n", sciara->parameters->Prho);
+  printf("Pepsilon		%f\n", sciara->parameters->Pepsilon);
+  printf("Psigma			%e\n", sciara->parameters->Psigma);
+  printf("Pcv			    %f\n", sciara->parameters->Pcv);
 }
 //---------------------------------------------------------------------------
 int loadMorphology(char* path, Sciara* sciara) 
@@ -185,8 +183,8 @@ int loadMorphology(char* path, Sciara* sciara)
 //sciara->Pa	 = gis_info_Sz.cell_size;
 //sciara->Ple	 = 2./sqrt(3.) * sciara->Pa;
 //sciara->Pae	 = 3 * sciara->Ple * sciara->Pa;
-  sciara->Pc   = gis_info_Sz.cell_size;
-  sciara->Pac  = sciara->Pc * sciara->Pc;
+  sciara->parameters->Pc   = gis_info_Sz.cell_size;
+  sciara->parameters->Pac  = sciara->parameters->Pc * sciara->parameters->Pc;
 
   // state variables allocation
   allocateSubstates(sciara);
@@ -334,7 +332,7 @@ int loadConfiguration(char const *path, Sciara* sciara)
   loadAlreadyAllocatedMap(configuration_path, sciara->substates->Msl, NULL, sciara->cols, sciara->rows);
 
   //Imposta lo step in base al nome del file .cfg e aggiorna la barra di stato
-  sciara->step = GetStepFromConfigurationFile((char*)path);
+  sciara->simulation->step = GetStepFromConfigurationFile((char*)path);
 
 
   return FILE_OK;
@@ -350,18 +348,18 @@ int saveConfiguration(char const *path, Sciara* sciara)
   char s[1024];
 
   //Salva il file di configurazione e i sottostati
-  path_ok = ConfigurationFileSavingPath((char*)path, sciara->step, "", ".cfg", s);
+  path_ok = ConfigurationFileSavingPath((char*)path, sciara->simulation->step, "", ".cfg", s);
 
   if (!path_ok || !saveParameters(s, sciara))
     return FILE_ERROR;
 
 
   //apre il file Morphology
-  ConfigurationFileSavingPath((char*)path, sciara->step, "Morphology", ".stt", s);
+  ConfigurationFileSavingPath((char*)path, sciara->simulation->step, "Morphology", ".stt", s);
   saveMatrixr(sciara->substates->Sz,s,sciara);
 
   //apre il file Vents
-  ConfigurationFileSavingPath((char*)path, sciara->step, "Vents", ".stt", s);
+  ConfigurationFileSavingPath((char*)path, sciara->simulation->step, "Vents", ".stt", s);
   sciara->substates->Mv = calAllocBuffer2Di(sciara->rows,sciara->cols);
   rebuildVentsMatrix(sciara->substates->Mv,sciara->cols,sciara->rows,sciara->vent);
   saveMatrixi(sciara->substates->Mv,s,sciara);
@@ -372,15 +370,15 @@ int saveConfiguration(char const *path, Sciara* sciara)
     return FILE_ERROR;
 
   //apre il file Thickness
-  ConfigurationFileSavingPath((char*)path, sciara->step, "Thickness", ".stt", s);
+  ConfigurationFileSavingPath((char*)path, sciara->simulation->step, "Thickness", ".stt", s);
   saveMatrixr(sciara->substates->Slt,s,sciara);
 
   //apre il file Temperature
-  ConfigurationFileSavingPath((char*)path, sciara->step, "Temperature", ".stt", s);
+  ConfigurationFileSavingPath((char*)path, sciara->simulation->step, "Temperature", ".stt", s);
   saveMatrixr(sciara->substates->St,s,sciara);
 
   //apre il file SolidifiedLavaThickness
-  ConfigurationFileSavingPath((char*)path, sciara->step, "SolidifiedLavaThickness", ".stt", s);
+  ConfigurationFileSavingPath((char*)path, sciara->simulation->step, "SolidifiedLavaThickness", ".stt", s);
   saveMatrixr(sciara->substates->Msl,s,sciara);
 
   return FILE_OK;

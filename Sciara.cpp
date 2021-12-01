@@ -1,9 +1,6 @@
 #include "Sciara.h"
 #include "cal2DBuffer.h"
 
-// ----------------------------------------------------------------------------
-// Memory allocation function for 2D linearized buffers
-// ----------------------------------------------------------------------------
 void allocateSubstates(Sciara *sciara)
 {
 	sciara->substates->Sz       = new (std::nothrow) double[sciara->rows*sciara->cols];
@@ -13,8 +10,8 @@ void allocateSubstates(Sciara *sciara)
 	sciara->substates->St       = new (std::nothrow) double[sciara->rows*sciara->cols];
   sciara->substates->St_next  = new (std::nothrow) double[sciara->rows*sciara->cols];
 	sciara->substates->Sf       = new (std::nothrow) double[sciara->rows*sciara->cols*NUMBER_OF_OUTFLOWS];
-	sciara->substates->Mv       = new (std::nothrow) int[sciara->rows*sciara->cols];
-	sciara->substates->Mb       = new (std::nothrow) bool[sciara->rows*sciara->cols];
+//sciara->substates->Mv       = new (std::nothrow)    int[sciara->rows*sciara->cols];
+	sciara->substates->Mb       = new (std::nothrow)   bool[sciara->rows*sciara->cols];
 	sciara->substates->Msl      = new (std::nothrow) double[sciara->rows*sciara->cols];
 }
 
@@ -27,9 +24,28 @@ void deallocateSubstates(Sciara *sciara)
 	if(sciara->substates->St)       delete[] sciara->substates->St;
   if(sciara->substates->St_next)  delete[] sciara->substates->St_next;
 	if(sciara->substates->Sf)       delete[] sciara->substates->Sf;
-	//if(sciara->substates->Mv)       delete[] sciara->substates->Mv;
+//if(sciara->substates->Mv)       delete[] sciara->substates->Mv;
 	if(sciara->substates->Mb)       delete[] sciara->substates->Mb;
 	if(sciara->substates->Msl)      delete[] sciara->substates->Msl;
+}
+
+void init(Sciara*& sciara)
+{
+  sciara = new Sciara;
+  sciara->substates = new Substates;
+  //allocateSubstates(sciara); //Substates allocation is done when the confiugration is loaded
+  sciara->parameters = new Parameters;
+  sciara->simulation = new Simulation;
+}
+
+void finalize(Sciara*& sciara)
+{
+  deallocateSubstates(sciara);
+  delete sciara->substates;
+  delete sciara->parameters;
+  delete sciara->simulation;
+  delete sciara;
+  sciara = NULL;
 }
 
 int Xi[] = {0, -1,  0,  0,  1, -1,  1,  1, -1}; // Xj: Moore neighborhood row coordinates (see below)

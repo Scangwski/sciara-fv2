@@ -25,15 +25,10 @@ typedef struct
 	int*    Mv;		    //Matrix of the vents
 	bool*   Mb;		    //Matrix of the topography bound
 	double* Msl;	    //Matrix of the solidified lava
-
 } Substates;
 
 typedef struct
 {
-	int    maximum_steps;	//... go for maximum_steps steps (0 for loop)
-	double stopping_threshold;	//se negativa non si effettua il controllo sulla pausa
-	int    refreshing_step;	//I thread grafici vengono avviati ogni repaint_step passi
-	double thickness_visual_threshold;	//in LCMorphology viene disegnato nero solo se mMD > visual_threshold
 	double Pclock;	//AC clock [s]
 	double Pc;		//cell side
 	double Pac;		//area of the cell
@@ -53,19 +48,38 @@ typedef struct
 	double Psigma;	//Stephen-Boltzamnn constant
 	double Pcv;		//Specific heat
 	int algorithm;	
+} Parameters;
+
+typedef struct
+{
+  int    step;
+	int    maximum_steps;	//... go for maximum_steps steps (0 for loop)
+	double elapsed_time; //tempo trascorso dall'inizio della simulazione [s]
+
+	double stopping_threshold;	//se negativa non si effettua il controllo sulla pausa
+	int    refreshing_step;	//I thread grafici vengono avviati ogni repaint_step passi
+	double thickness_visual_threshold;	//in LCMorphology viene disegnato nero solo se mMD > visual_threshold
+} Simulation;
+
+
+typedef struct
+{
 	int rows;
 	int cols;
-	double rad2;
+
 	unsigned int emission_time;
 	vector<TEmissionRate> emission_rate;
 	vector<TVent> vent;
-	double elapsed_time; //tempo trascorso dall'inizio della simulazione [s]
-  int step;
-
 	double effusion_duration;
-	Substates * substates;
+
+	Substates *substates;
+  Parameters *parameters;
+  Simulation *simulation;
 
 } Sciara;
+
+
+
 
 extern int Xi[];
 extern int Xj[];
@@ -75,7 +89,10 @@ void MakeBorder(Sciara *sciara);
 // ----------------------------------------------------------------------------
 // Memory allocation function for 2D linearized buffers
 // ----------------------------------------------------------------------------
+
+void init(Sciara*& sciara);
 void allocateSubstates(Sciara *sciara);
-void deallocateSubstates(Sciara *sciara);
+//void deallocateSubstates(Sciara *sciara);
+void finalize(Sciara*& sciara);
 
 #endif /* CA_H_ */

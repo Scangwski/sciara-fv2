@@ -44,8 +44,8 @@ void SimulationInitialize(Sciara* sciara)
   unsigned int maximum_number_of_emissions = 0;
 
   //azzeramento dello step dell'AC
-  sciara->step = 0;
-  sciara->elapsed_time = 0;
+  sciara->simulation->step = 0;
+  sciara->simulation->elapsed_time = 0;
 
   //determinazione numero massimo di passi
   for (unsigned int i = 0; i < sciara->emission_rate.size(); i++)
@@ -58,8 +58,20 @@ void SimulationInitialize(Sciara* sciara)
   MakeBorder(sciara);
 
   //calcolo a b (parametri viscosità) c d (parametri resistenza al taglio)
-  evaluatePowerLawParams(sciara->PTvent, sciara->PTsol, sciara->Pr_Tsol,  sciara->Pr_Tvent,  sciara->a, sciara->b);
-  evaluatePowerLawParams(sciara->PTvent, sciara->PTsol, sciara->Phc_Tsol, sciara->Phc_Tvent, sciara->c, sciara->d);
+  evaluatePowerLawParams(
+      sciara->parameters->PTvent, 
+      sciara->parameters->PTsol, 
+      sciara->parameters->Pr_Tsol,  
+      sciara->parameters->Pr_Tvent,  
+      sciara->parameters->a, 
+      sciara->parameters->b);
+  evaluatePowerLawParams(
+      sciara->parameters->PTvent,
+      sciara->parameters->PTsol,
+      sciara->parameters->Phc_Tsol,
+      sciara->parameters->Phc_Tvent,
+      sciara->parameters->c,
+      sciara->parameters->d);
 }
 
 void simulationInit (
@@ -250,8 +262,8 @@ void massBalance(
 {
   int outFlowsIndexes[NUMBER_OF_OUTFLOWS] = { 3, 2, 1, 0, 6, 7, 4, 5 };
   int n;
-  double initial_h = GET(Slt,c,i,j); //calGet2Dr(model, Slt, i, j);
-  double initial_t = GET(St,c,i,j); //calGet2Dr(model, St, i, j);
+  double initial_h = GET(Slt,c,i,j);
+  double initial_t = GET(St,c,i,j);
   double residualTemperature = initial_h * initial_t;
   double residualLava = initial_h;
   double h_next = initial_h;
@@ -261,20 +273,22 @@ void massBalance(
   double inSum = 0;
   double outSum = 0;
 
-  for (n = 1; n < MOORE_NEIGHBORS; n++) {
-    double inFlow = BUF_GET(Sf,r,c,outFlowsIndexes[n-1],i+Xi[n],j+Xj[n]); //calGetX2Dr(model, sciara->substates->f[outFlowsIndexes[n - 1]], i, j, n);
-    double outFlow = BUF_GET(Sf,r,c,n-1,i,j); //calGet2Dr(model, sciara->substates->f[n - 1], i, j);
-    double neigh_t = GET(St,c,i+Xi[n],j+Xj[n]); //calGetX2Dr(model, sciara->substates->St, i, j, n);
+  for (n = 1; n < MOORE_NEIGHBORS; n++)
+  {
+    double inFlow = BUF_GET(Sf,r,c,outFlowsIndexes[n-1],i+Xi[n],j+Xj[n]);
+    double outFlow = BUF_GET(Sf,r,c,n-1,i,j);
+    double neigh_t = GET(St,c,i+Xi[n],j+Xj[n]);
     ht += inFlow * neigh_t;
     inSum += inFlow;
     outSum += outFlow;
   }
   h_next += inSum - outSum;
-  SET(Slt_next,c,i,j,h_next); //calSet2Dr(model, sciara->substates->Slt, i, j, h_next);
+  SET(Slt_next,c,i,j,h_next);
+
   if (inSum > 0 || outSum > 0) {
     residualLava -= outSum;
     t_next = (residualLava * initial_t + ht) / (residualLava + inSum);
-    SET(St_next,c,i,j,t_next); //calSet2Dr(model, sciara->substates->St, i, j, t_next);
+    SET(St_next,c,i,j,t_next);
   }
 }
 
@@ -382,11 +396,9 @@ int main(int argc, char **argv)
   //   -1,-1|-1,0| 1,1      |5|1|8|       |4|0|7|
   //    0,-1| 0,0| 0,1      |2|0|3|       |1| |2|
   //    1,-1| 1,0|-1,1      |6|4|7|       |5|3|6|
-  //
 
-
-  Sciara *sciara = new Sciara;
-  sciara->substates = new Substates;
+  Sciara *sciara;
+  init(sciara);
 
   // Input data 
   int max_steps = atoi(argv[MAX_STEPS_ID]);
@@ -418,7 +430,8 @@ int main(int argc, char **argv)
 
   util::Timer cl_timer;
   // simulation loop
-  while ( (max_steps > 0 && sciara->step <= max_steps)/* && sciara->elapsed_time <= sciara->effusion_duration */)
+  while ( (max_steps > 0 && sciara->simulation->step < max_steps) 
+     /*|| sciara->simulation->elapsed_time <= sciara->effusion_duration */)
   {
     // Apply the emitLava kernel to the whole domain and update the Slt and St state variables
 #pragma omp parallel for
@@ -428,11 +441,11 @@ int main(int argc, char **argv)
             sciara->rows, 
             sciara->cols, 
             sciara->vent, 
-            sciara->elapsed_time, 
-            sciara->Pclock, 
+            sciara->simulation->elapsed_time, 
+            sciara->parameters->Pclock, 
             sciara->emission_time, 
-            sciara->Pac, 
-            sciara->PTvent, 
+            sciara->parameters->Pac, 
+            sciara->parameters->PTvent, 
             sciara->substates->Slt, 
             sciara->substates->Slt_next,
             sciara->substates->St_next);
@@ -454,11 +467,11 @@ int main(int argc, char **argv)
             sciara->substates->Slt, 
             sciara->substates->St, 
             sciara->substates->Sf, 
-            sciara->Pc, 
-            sciara->a, 
-            sciara->b, 
-            sciara->c, 
-            sciara->d);
+            sciara->parameters->Pc, 
+            sciara->parameters->a, 
+            sciara->parameters->b, 
+            sciara->parameters->c, 
+            sciara->parameters->d);
 
     // Apply the massBalance mass balance kernel to the whole domain and update the Slt and St state variables
 #pragma omp parallel for
@@ -486,14 +499,14 @@ int main(int argc, char **argv)
         computeNewTemperatureAndSolidification (i, j, 
             sciara->rows, 
             sciara->cols, 
-            sciara->Pepsilon,
-            sciara->Psigma,
-            sciara->Pclock,
-            sciara->Pcool,
-            sciara->Prho,
-            sciara->Pcv,
-            sciara->Pac,
-            sciara->PTsol,
+            sciara->parameters->Pepsilon,
+            sciara->parameters->Psigma,
+            sciara->parameters->Pclock,
+            sciara->parameters->Pcool,
+            sciara->parameters->Prho,
+            sciara->parameters->Pcv,
+            sciara->parameters->Pac,
+            sciara->parameters->PTsol,
             sciara->substates->Sz, 
             sciara->substates->Sz_next,
             sciara->substates->Slt, 
@@ -525,8 +538,8 @@ int main(int argc, char **argv)
             sciara->substates->St_next);
 
 
-    sciara->elapsed_time += sciara->Pclock;
-    sciara->step++;
+    sciara->simulation->elapsed_time += sciara->parameters->Pclock;
+    sciara->simulation->step++;
   }
 
   double cl_time = static_cast<double>(cl_timer.getTimeMilliseconds()) / 1000.0;
@@ -536,8 +549,9 @@ int main(int argc, char **argv)
   saveConfiguration(argv[OUTPUT_PATH_ID], sciara);
 
   printf("Releasing memory...\n");
-  deallocateSubstates(sciara);
-  delete sciara;
+  //deallocateSubstates(sciara);
+  //delete sciara;
+  finalize(sciara);
 
   return 0;
 }

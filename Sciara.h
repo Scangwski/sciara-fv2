@@ -15,6 +15,12 @@
 
 typedef struct
 {
+	int rows;
+	int cols;
+} Domain;
+
+typedef struct
+{
 	double* Sz;		    //Altitude
   double* Sz_next;
 	double* Slt;	    //Lava thickness
@@ -56,6 +62,11 @@ typedef struct
 	int    maximum_steps;	//... go for maximum_steps steps (0 for loop)
 	double elapsed_time; //tempo trascorso dall'inizio della simulazione [s]
 
+	unsigned int emission_time;
+	vector<TEmissionRate> emission_rate;
+	vector<TVent> vent;
+	double effusion_duration;
+
 	double stopping_threshold;	//se negativa non si effettua il controllo sulla pausa
 	int    refreshing_step;	//I thread grafici vengono avviati ogni repaint_step passi
 	double thickness_visual_threshold;	//in LCMorphology viene disegnato nero solo se mMD > visual_threshold
@@ -64,22 +75,12 @@ typedef struct
 
 typedef struct
 {
-	int rows;
-	int cols;
-
-	unsigned int emission_time;
-	vector<TEmissionRate> emission_rate;
-	vector<TVent> vent;
-	double effusion_duration;
-
+  Domain *domain;
 	Substates *substates;
   Parameters *parameters;
   Simulation *simulation;
 
 } Sciara;
-
-
-
 
 extern int Xi[];
 extern int Xj[];

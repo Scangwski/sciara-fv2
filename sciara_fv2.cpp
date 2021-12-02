@@ -48,11 +48,11 @@ void SimulationInitialize(Sciara* sciara)
   sciara->simulation->elapsed_time = 0;
 
   //determinazione numero massimo di passi
-  for (unsigned int i = 0; i < sciara->emission_rate.size(); i++)
-    if (maximum_number_of_emissions < sciara->emission_rate[i].size())
-      maximum_number_of_emissions = sciara->emission_rate[i].size();
+  for (unsigned int i = 0; i < sciara->simulation->emission_rate.size(); i++)
+    if (maximum_number_of_emissions < sciara->simulation->emission_rate[i].size())
+      maximum_number_of_emissions = sciara->simulation->emission_rate[i].size();
   //maximum_steps_from_emissions = (int)(emission_time/Pclock*maximum_number_of_emissions);
-  sciara->effusion_duration = sciara->emission_time * maximum_number_of_emissions;
+  sciara->simulation->effusion_duration = sciara->simulation->emission_time * maximum_number_of_emissions;
 
   //definisce il bordo della morfologia
   MakeBorder(sciara);
@@ -407,8 +407,8 @@ int main(int argc, char **argv)
   SimulationInitialize(sciara);
 
   // Domain boundaries and neighborhood
-  int i_start = 0, i_end = sciara->rows-1;        // [i_start,i_end[: kernels application range along the rows
-  int j_start = 0, j_end = sciara->cols-1;        // [i_start,i_end[: kernels application range along the rows
+  int i_start = 0, i_end = sciara->domain->rows-1;        // [i_start,i_end[: kernels application range along the rows
+  int j_start = 0, j_end = sciara->domain->cols-1;        // [i_start,i_end[: kernels application range along the rows
   // int Xi[] = {0, -1,  0,  0,  1, -1,  1,  1, -1}; // Xj: Moore neighborhood row coordinates (see below)
   // int Xj[] = {0,  0, -1,  1,  0, -1, -1,  1,  1}; // Xj: Moore neighborhood col coordinates (see below)
 
@@ -417,8 +417,8 @@ int main(int argc, char **argv)
   for (int i = i_start; i < i_end; i++)
     for (int j = j_start; j < j_end; j++)
       simulationInit(i, j, 
-          sciara->rows, 
-          sciara->cols, 
+          sciara->domain->rows, 
+          sciara->domain->cols, 
           sciara->substates->Sz, 
           sciara->substates->Sz_next, 
           sciara->substates->Slt, 
@@ -431,26 +431,26 @@ int main(int argc, char **argv)
   util::Timer cl_timer;
   // simulation loop
   while ( (max_steps > 0 && sciara->simulation->step < max_steps) 
-     /*|| sciara->simulation->elapsed_time <= sciara->effusion_duration */)
+     /*|| sciara->simulation->elapsed_time <= sciara->simulation->effusion_duration */)
   {
     // Apply the emitLava kernel to the whole domain and update the Slt and St state variables
 #pragma omp parallel for
     for (int i = i_start; i < i_end; i++)
       for (int j = j_start; j < j_end; j++)
         emitLava(i, j, 
-            sciara->rows, 
-            sciara->cols, 
-            sciara->vent, 
+            sciara->domain->rows, 
+            sciara->domain->cols, 
+            sciara->simulation->vent, 
             sciara->simulation->elapsed_time, 
             sciara->parameters->Pclock, 
-            sciara->emission_time, 
+            sciara->simulation->emission_time, 
             sciara->parameters->Pac, 
             sciara->parameters->PTvent, 
             sciara->substates->Slt, 
             sciara->substates->Slt_next,
             sciara->substates->St_next);
-    calCopyBuffer2Dr(sciara->substates->Slt_next, sciara->substates->Slt, sciara->rows, sciara->cols);
-    calCopyBuffer2Dr(sciara->substates->St_next,  sciara->substates->St,  sciara->rows, sciara->cols);
+    calCopyBuffer2Dr(sciara->substates->Slt_next, sciara->substates->Slt, sciara->domain->rows, sciara->domain->cols);
+    calCopyBuffer2Dr(sciara->substates->St_next,  sciara->substates->St,  sciara->domain->rows, sciara->domain->cols);
     //swap_pointers(sciara->substates->Slt_next, sciara->substates->Slt);
     //swap_pointers(sciara->substates->St_next,  sciara->substates->St);
 
@@ -459,8 +459,8 @@ int main(int argc, char **argv)
     for (int i = i_start; i < i_end; i++)
       for (int j = j_start; j < j_end; j++)
         computeOutflows(i, j, 
-            sciara->rows, 
-            sciara->cols, 
+            sciara->domain->rows, 
+            sciara->domain->cols, 
             Xi, 
             Xj,
             sciara->substates->Sz, 
@@ -478,8 +478,8 @@ int main(int argc, char **argv)
     for (int i = i_start; i < i_end; i++)
       for (int j = j_start; j < j_end; j++)
         massBalance (i, j, 
-            sciara->rows, 
-            sciara->cols, 
+            sciara->domain->rows, 
+            sciara->domain->cols, 
             Xi, 
             Xj, 
             sciara->substates->Slt, 
@@ -487,8 +487,8 @@ int main(int argc, char **argv)
             sciara->substates->St, 
             sciara->substates->St_next, 
             sciara->substates->Sf);
-    calCopyBuffer2Dr(sciara->substates->Slt_next, sciara->substates->Slt, sciara->rows, sciara->cols);
-    calCopyBuffer2Dr(sciara->substates->St_next,  sciara->substates->St,  sciara->rows, sciara->cols);
+    calCopyBuffer2Dr(sciara->substates->Slt_next, sciara->substates->Slt, sciara->domain->rows, sciara->domain->cols);
+    calCopyBuffer2Dr(sciara->substates->St_next,  sciara->substates->St,  sciara->domain->rows, sciara->domain->cols);
     //swap_pointers(sciara->substates->Slt_next, sciara->substates->Slt);
     //swap_pointers(sciara->substates->St_next,  sciara->substates->St);
 
@@ -497,8 +497,8 @@ int main(int argc, char **argv)
     for (int i = i_start; i < i_end; i++)
       for (int j = j_start; j < j_end; j++)
         computeNewTemperatureAndSolidification (i, j, 
-            sciara->rows, 
-            sciara->cols, 
+            sciara->domain->rows, 
+            sciara->domain->cols, 
             sciara->parameters->Pepsilon,
             sciara->parameters->Psigma,
             sciara->parameters->Pclock,
@@ -516,9 +516,9 @@ int main(int argc, char **argv)
             sciara->substates->Sf, 
             sciara->substates->Msl, 
             sciara->substates->Mb);
-    calCopyBuffer2Dr(sciara->substates->Sz_next,  sciara->substates->Sz,  sciara->rows, sciara->cols);
-    calCopyBuffer2Dr(sciara->substates->Slt_next, sciara->substates->Slt, sciara->rows, sciara->cols);
-    calCopyBuffer2Dr(sciara->substates->St_next,  sciara->substates->St,  sciara->rows, sciara->cols);
+    calCopyBuffer2Dr(sciara->substates->Sz_next,  sciara->substates->Sz,  sciara->domain->rows, sciara->domain->cols);
+    calCopyBuffer2Dr(sciara->substates->Slt_next, sciara->substates->Slt, sciara->domain->rows, sciara->domain->cols);
+    calCopyBuffer2Dr(sciara->substates->St_next,  sciara->substates->St,  sciara->domain->rows, sciara->domain->cols);
     //swap_pointers(sciara->substates->Sz_next,  sciara->substates->Sz);
     //swap_pointers(sciara->substates->Slt_next, sciara->substates->Slt);
     //swap_pointers(sciara->substates->St_next,  sciara->substates->St);
@@ -528,8 +528,8 @@ int main(int argc, char **argv)
     for (int i = i_start; i < i_end; i++)
       for (int j = j_start; j < j_end; j++)
         resetFlowsAndBoundaries (i, j, 
-            sciara->rows, 
-            sciara->cols, 
+            sciara->domain->rows, 
+            sciara->domain->cols, 
             sciara->substates->Sf,
             sciara->substates->Mb,
             sciara->substates->Slt,
@@ -562,8 +562,8 @@ int main(int argc, char **argv)
 //   for (int i = 0; i < NUMBER_OF_OUTFLOWS; ++i)
 //     calInitSubstate2Dr(model, sciara->substates->f[i], 0);
 // 
-//   for (int i = 0; i < sciara->rows; i++)
-//     for (int j = 0; j < sciara->cols; j++)
+//   for (int i = 0; i < sciara->domain->rows; i++)
+//     for (int j = 0; j < sciara->domain->cols; j++)
 //       if (calGet2Db(model, sciara->substates->Mb, i, j) == true) {
 //         calSet2Dr(model, sciara->substates->Slt, i, j, 0);
 //         calSet2Dr(model, sciara->substates->St, i, j, 0);

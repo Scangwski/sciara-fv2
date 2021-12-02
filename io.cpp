@@ -22,13 +22,13 @@ TGISInfo gis_info_nodata0;
 void saveMatrixr(double * M, char configuration_path[1024],Sciara * sciara){
   FILE* input_file = fopen(configuration_path,"w");
   SalvaGISInfo(gis_info_Sz,input_file);
-  calfSaveMatrix2Dr(M,sciara->rows,sciara->cols,input_file);
+  calfSaveMatrix2Dr(M,sciara->domain->rows,sciara->domain->cols,input_file);
   fclose(input_file);
 }
 void saveMatrixi(int * M, char configuration_path[1024],Sciara * sciara){
   FILE* input_file = fopen(configuration_path,"w");
   SalvaGISInfo(gis_info_Sz,input_file);
-  calfSaveMatrix2Di(M,sciara->rows,sciara->cols,input_file);
+  calfSaveMatrix2Di(M,sciara->domain->rows,sciara->domain->cols,input_file);
   fclose(input_file);
 }
 
@@ -48,7 +48,7 @@ int SaveConfigurationEmission(Sciara* sciara, char const *path, char const *name
       strcat(str, (char*)name);
       return FILE_ERROR;
     }
-    saveEmissionRates(s_file, sciara->emission_time, sciara->emission_rate);
+    saveEmissionRates(s_file, sciara->simulation->emission_time, sciara->simulation->emission_rate);
     fclose(s_file);
     return FILE_OK;
   }
@@ -178,8 +178,8 @@ int loadMorphology(char* path, Sciara* sciara)
   }
   initGISInfoNODATA0(gis_info_Sz, gis_info_nodata0);
 
-	sciara->cols = gis_info_Sz.ncols;
-	sciara->rows = gis_info_Sz.nrows;
+	sciara->domain->cols = gis_info_Sz.ncols;
+	sciara->domain->rows = gis_info_Sz.nrows;
 //sciara->Pa	 = gis_info_Sz.cell_size;
 //sciara->Ple	 = 2./sqrt(3.) * sciara->Pa;
 //sciara->Pae	 = 3 * sciara->Ple * sciara->Pa;
@@ -190,8 +190,8 @@ int loadMorphology(char* path, Sciara* sciara)
   allocateSubstates(sciara);
 
   //legge il file contenente la morfologia
-  calfLoadMatrix2Dr(sciara->substates->Sz, sciara->rows, sciara->cols, input_file);
-  calCopyBuffer2Dr(sciara->substates->Sz, sciara->substates->Sz_next, sciara->rows, sciara->cols);
+  calfLoadMatrix2Dr(sciara->substates->Sz, sciara->domain->rows, sciara->domain->cols, input_file);
+  calCopyBuffer2Dr(sciara->substates->Sz, sciara->substates->Sz_next, sciara->domain->rows, sciara->domain->cols);
 
   fclose(input_file);
 
@@ -212,12 +212,12 @@ int loadVents(char* path, Sciara* sciara)
   }
 
   //Alloca e legge
-	sciara->substates->Mv = calAllocBuffer2Di(sciara->rows,sciara->cols);
-  calfLoadMatrix2Di(sciara->substates->Mv, sciara->rows, sciara->cols, input_file);
+	sciara->substates->Mv = calAllocBuffer2Di(sciara->domain->rows,sciara->domain->cols);
+  calfLoadMatrix2Di(sciara->substates->Mv, sciara->domain->rows, sciara->domain->cols, input_file);
   fclose(input_file);
 
   //verifica della consistenza della matrice
-  initVents(sciara->substates->Mv, sciara->cols, sciara->rows, sciara->vent);
+  initVents(sciara->substates->Mv, sciara->domain->cols, sciara->domain->rows, sciara->simulation->vent);
 
   calDeleteBuffer2Di(sciara->substates->Mv);
 
@@ -230,11 +230,11 @@ int loadEmissionRate(char *path, Sciara* sciara)
   if ((input_file = fopen(path, "r")) == NULL)
     return FILE_ERROR;
 
-  int emission_rate_file_status = loadEmissionRates(input_file, sciara->emission_time, sciara->emission_rate, sciara->vent);
+  int emission_rate_file_status = loadEmissionRates(input_file, sciara->simulation->emission_time, sciara->simulation->emission_rate, sciara->simulation->vent);
   fclose(input_file);
 
   //verifica della consistenza del file e definisce il vettore vent
-  int error = defineVents(sciara->emission_rate, sciara->vent);
+  int error = defineVents(sciara->simulation->emission_rate, sciara->simulation->vent);
   if (error || emission_rate_file_status != EMISSION_RATE_FILE_OK)
     return FILE_ERROR;
 
@@ -321,15 +321,15 @@ int loadConfiguration(char const *path, Sciara* sciara)
 
   //apre il file Thickness
   ConfigurationFilePath((char*)path, "Thickness", ".stt", configuration_path);
-  loadAlreadyAllocatedMap(configuration_path, sciara->substates->Slt, sciara->substates->Slt_next, sciara->cols, sciara->rows);
+  loadAlreadyAllocatedMap(configuration_path, sciara->substates->Slt, sciara->substates->Slt_next, sciara->domain->cols, sciara->domain->rows);
 
   //apre il file Temperature
   ConfigurationFilePath((char*)path, "Temperature", ".stt", configuration_path);
-  loadAlreadyAllocatedMap(configuration_path, sciara->substates->St, sciara->substates->St_next, sciara->cols, sciara->rows);
+  loadAlreadyAllocatedMap(configuration_path, sciara->substates->St, sciara->substates->St_next, sciara->domain->cols, sciara->domain->rows);
 
   //apre il file SolidifiedLavaThickness
   ConfigurationFilePath((char*)path, "SolidifiedLavaThickness", ".stt", configuration_path);
-  loadAlreadyAllocatedMap(configuration_path, sciara->substates->Msl, NULL, sciara->cols, sciara->rows);
+  loadAlreadyAllocatedMap(configuration_path, sciara->substates->Msl, NULL, sciara->domain->cols, sciara->domain->rows);
 
   //Imposta lo step in base al nome del file .cfg e aggiorna la barra di stato
   sciara->simulation->step = GetStepFromConfigurationFile((char*)path);
@@ -360,8 +360,8 @@ int saveConfiguration(char const *path, Sciara* sciara)
 
   //apre il file Vents
   ConfigurationFileSavingPath((char*)path, sciara->simulation->step, "Vents", ".stt", s);
-  sciara->substates->Mv = calAllocBuffer2Di(sciara->rows,sciara->cols);
-  rebuildVentsMatrix(sciara->substates->Mv,sciara->cols,sciara->rows,sciara->vent);
+  sciara->substates->Mv = calAllocBuffer2Di(sciara->domain->rows,sciara->domain->cols);
+  rebuildVentsMatrix(sciara->substates->Mv,sciara->domain->cols,sciara->domain->rows,sciara->simulation->vent);
   saveMatrixi(sciara->substates->Mv,s,sciara);
   calDeleteBuffer2Di(sciara->substates->Mv);
 

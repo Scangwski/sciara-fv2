@@ -3,16 +3,16 @@
 
 void allocateSubstates(Sciara *sciara)
 {
-	sciara->substates->Sz       = new (std::nothrow) double[sciara->rows*sciara->cols];
-  sciara->substates->Sz_next  = new (std::nothrow) double[sciara->rows*sciara->cols];
-	sciara->substates->Slt      = new (std::nothrow) double[sciara->rows*sciara->cols];
-  sciara->substates->Slt_next = new (std::nothrow) double[sciara->rows*sciara->cols];
-	sciara->substates->St       = new (std::nothrow) double[sciara->rows*sciara->cols];
-  sciara->substates->St_next  = new (std::nothrow) double[sciara->rows*sciara->cols];
-	sciara->substates->Sf       = new (std::nothrow) double[sciara->rows*sciara->cols*NUMBER_OF_OUTFLOWS];
-//sciara->substates->Mv       = new (std::nothrow)    int[sciara->rows*sciara->cols];
-	sciara->substates->Mb       = new (std::nothrow)   bool[sciara->rows*sciara->cols];
-	sciara->substates->Msl      = new (std::nothrow) double[sciara->rows*sciara->cols];
+	sciara->substates->Sz       = new (std::nothrow) double[sciara->domain->rows*sciara->domain->cols];
+  sciara->substates->Sz_next  = new (std::nothrow) double[sciara->domain->rows*sciara->domain->cols];
+	sciara->substates->Slt      = new (std::nothrow) double[sciara->domain->rows*sciara->domain->cols];
+  sciara->substates->Slt_next = new (std::nothrow) double[sciara->domain->rows*sciara->domain->cols];
+	sciara->substates->St       = new (std::nothrow) double[sciara->domain->rows*sciara->domain->cols];
+  sciara->substates->St_next  = new (std::nothrow) double[sciara->domain->rows*sciara->domain->cols];
+	sciara->substates->Sf       = new (std::nothrow) double[sciara->domain->rows*sciara->domain->cols*NUMBER_OF_OUTFLOWS];
+//sciara->substates->Mv       = new (std::nothrow)    int[sciara->domain->rows*sciara->domain->cols];
+	sciara->substates->Mb       = new (std::nothrow)   bool[sciara->domain->rows*sciara->domain->cols];
+	sciara->substates->Msl      = new (std::nothrow) double[sciara->domain->rows*sciara->domain->cols];
 }
 
 void deallocateSubstates(Sciara *sciara)
@@ -32,6 +32,7 @@ void deallocateSubstates(Sciara *sciara)
 void init(Sciara*& sciara)
 {
   sciara = new Sciara;
+  sciara->domain = new Domain;
   sciara->substates = new Substates;
   //allocateSubstates(sciara); //Substates allocation is done when the confiugration is loaded
   sciara->parameters = new Parameters;
@@ -41,6 +42,7 @@ void init(Sciara*& sciara)
 void finalize(Sciara*& sciara)
 {
   deallocateSubstates(sciara);
+  delete sciara->domain;
   delete sciara->substates;
   delete sciara->parameters;
   delete sciara->simulation;
@@ -57,36 +59,36 @@ void MakeBorder(Sciara *sciara)
 
 	//prima riga
 	i = 0;
-	for (j = 0; j < sciara->cols; j++)
-		if (calGetMatrixElement(sciara->substates->Sz, sciara->cols, i, j) >= 0)
-			calSetMatrixElement(sciara->substates->Mb, sciara->cols, i, j, true);
+	for (j = 0; j < sciara->domain->cols; j++)
+		if (calGetMatrixElement(sciara->substates->Sz, sciara->domain->cols, i, j) >= 0)
+			calSetMatrixElement(sciara->substates->Mb, sciara->domain->cols, i, j, true);
 
 	//ultima riga
-	i = sciara->rows - 1;
-	for (j = 0; j < sciara->cols; j++)
-		if (calGetMatrixElement(sciara->substates->Sz, sciara->cols, i, j) >= 0)
-			calSetMatrixElement(sciara->substates->Mb, sciara->cols, i, j, true);
+	i = sciara->domain->rows - 1;
+	for (j = 0; j < sciara->domain->cols; j++)
+		if (calGetMatrixElement(sciara->substates->Sz, sciara->domain->cols, i, j) >= 0)
+			calSetMatrixElement(sciara->substates->Mb, sciara->domain->cols, i, j, true);
 
 	//prima colonna
 	j = 0;
-	for (i = 0; i < sciara->rows; i++)
-		if (calGetMatrixElement(sciara->substates->Sz, sciara->cols, i, j) >= 0)
-			calSetMatrixElement(sciara->substates->Mb, sciara->cols, i, j, true);
+	for (i = 0; i < sciara->domain->rows; i++)
+		if (calGetMatrixElement(sciara->substates->Sz, sciara->domain->cols, i, j) >= 0)
+			calSetMatrixElement(sciara->substates->Mb, sciara->domain->cols, i, j, true);
   
 	//ultima colonna
-	j = sciara->cols - 1;
-	for (i = 0; i < sciara->rows; i++)
-		if (calGetMatrixElement(sciara->substates->Sz, sciara->cols, i, j) >= 0)
-			calSetMatrixElement(sciara->substates->Mb, sciara->cols, i, j, true);
+	j = sciara->domain->cols - 1;
+	for (i = 0; i < sciara->domain->rows; i++)
+		if (calGetMatrixElement(sciara->substates->Sz, sciara->domain->cols, i, j) >= 0)
+			calSetMatrixElement(sciara->substates->Mb, sciara->domain->cols, i, j, true);
 	
 	//il resto
-	for (int i = 1; i < sciara->rows - 1; i++)
-		for (int j = 1; j < sciara->cols - 1; j++)
-			if (calGetMatrixElement(sciara->substates->Sz, sciara->cols, i, j) >= 0) {
+	for (int i = 1; i < sciara->domain->rows - 1; i++)
+		for (int j = 1; j < sciara->domain->cols - 1; j++)
+			if (calGetMatrixElement(sciara->substates->Sz, sciara->domain->cols, i, j) >= 0) {
 				for (int k = 1; k < MOORE_NEIGHBORS; k++)
-					if (calGetMatrixElement(sciara->substates->Sz, sciara->cols, i+Xi[k], j+Xj[k]) < 0)
+					if (calGetMatrixElement(sciara->substates->Sz, sciara->domain->cols, i+Xi[k], j+Xj[k]) < 0)
           {
-			      calSetMatrixElement(sciara->substates->Mb, sciara->cols, i, j, true);
+			      calSetMatrixElement(sciara->substates->Mb, sciara->domain->cols, i, j, true);
 						break;
 					}
 			}

@@ -29,10 +29,22 @@ void deallocateSubstates(Sciara *sciara)
 	if(sciara->substates->Msl)      delete[] sciara->substates->Msl;
 }
 
+int _Xi[] = {0, -1,  0,  0,  1, -1,  1,  1, -1}; // Xj: Moore neighborhood row coordinates (see below)
+int _Xj[] = {0,  0, -1,  1,  0, -1, -1,  1,  1}; // Xj: Moore neighborhood col coordinates (see below)
 void init(Sciara*& sciara)
 {
   sciara = new Sciara;
   sciara->domain = new Domain;
+
+  sciara->X = new NeighsRelativeCoords;
+  sciara->X->Xi = new int[MOORE_NEIGHBORS];
+  sciara->X->Xj = new int[MOORE_NEIGHBORS];
+  for (int n=0; n<MOORE_NEIGHBORS; n++)
+  {
+    sciara->X->Xi[n] = _Xi[n];
+    sciara->X->Xj[n] = _Xj[n];
+  }
+
   sciara->substates = new Substates;
   //allocateSubstates(sciara); //Substates allocation is done when the confiugration is loaded
   sciara->parameters = new Parameters;
@@ -43,6 +55,9 @@ void finalize(Sciara*& sciara)
 {
   deallocateSubstates(sciara);
   delete sciara->domain;
+  delete sciara->X->Xi;
+  delete sciara->X->Xj;
+  delete sciara->X;
   delete sciara->substates;
   delete sciara->parameters;
   delete sciara->simulation;
@@ -50,8 +65,6 @@ void finalize(Sciara*& sciara)
   sciara = NULL;
 }
 
-int Xi[] = {0, -1,  0,  0,  1, -1,  1,  1, -1}; // Xj: Moore neighborhood row coordinates (see below)
-int Xj[] = {0,  0, -1,  1,  0, -1, -1,  1,  1}; // Xj: Moore neighborhood col coordinates (see below)
 
 void MakeBorder(Sciara *sciara) 
 {
@@ -86,7 +99,7 @@ void MakeBorder(Sciara *sciara)
 		for (int j = 1; j < sciara->domain->cols - 1; j++)
 			if (calGetMatrixElement(sciara->substates->Sz, sciara->domain->cols, i, j) >= 0) {
 				for (int k = 1; k < MOORE_NEIGHBORS; k++)
-					if (calGetMatrixElement(sciara->substates->Sz, sciara->domain->cols, i+Xi[k], j+Xj[k]) < 0)
+					if (calGetMatrixElement(sciara->substates->Sz, sciara->domain->cols, i+sciara->X->Xi[k], j+sciara->X->Xj[k]) < 0)
           {
 			      calSetMatrixElement(sciara->substates->Mb, sciara->domain->cols, i, j, true);
 						break;

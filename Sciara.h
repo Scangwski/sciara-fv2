@@ -21,6 +21,12 @@ typedef struct
 
 typedef struct
 {
+  int* Xi;
+  int* Xj;
+} NeighsRelativeCoords;
+
+typedef struct
+{
 	double* Sz;		    //Altitude
   double* Sz_next;
 	double* Slt;	    //Lava thickness
@@ -76,14 +82,15 @@ typedef struct
 typedef struct
 {
   Domain *domain;
+  NeighsRelativeCoords *X;
 	Substates *substates;
   Parameters *parameters;
   Simulation *simulation;
 
 } Sciara;
 
-extern int Xi[];
-extern int Xj[];
+//extern int Xi[];
+//extern int Xj[];
 
 void MakeBorder(Sciara *sciara);
 

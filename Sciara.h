@@ -19,6 +19,20 @@ typedef struct
 	int cols;
 } Domain;
 
+// The adopted von Neuman neighborhood // Format: flow_index:cell_label:(row_index,col_index)
+//
+//   cell_label in [0,1,2,3,4,5,6,7,8]: label assigned to each cell in the neighborhood
+//   flow_index in   [0,1,2,3,4,5,6,7]: outgoing flow indices in Sf from cell 0 to the others
+//       (row_index,col_index): 2D relative indices of the cells
+//
+//
+//    cells               cells         outflows
+//    coordinates         labels        indices
+//
+//   -1,-1|-1,0| 1,1      |5|1|8|       |4|0|7|
+//    0,-1| 0,0| 0,1      |2|0|3|       |1| |2|
+//    1,-1| 1,0|-1,1      |6|4|7|       |5|3|6|
+
 typedef struct
 {
   int* Xi;

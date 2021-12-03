@@ -88,10 +88,10 @@ void simulationInit (
     double* Sf, 
     bool* Mb)
 {
-  SET(Sz_next, c,i,j,GET(Sz,c,i,j) ); 
-  SET(Slt_next,c,i,j,GET(Slt,c,i,j) ); 
-  SET(St_next, c,i,j,GET(St,c,i,j) ); 
-  SET(Mb,      c,i,j,false); 
+  //SET(Sz_next, c,i,j,GET(Sz,c,i,j) ); 
+  //SET(Slt_next,c,i,j,GET(Slt,c,i,j) ); 
+  //SET(St_next, c,i,j,GET(St,c,i,j) ); 
+  //SET(Mb,      c,i,j,false); 
   for (int n=0; n<NUMBER_OF_OUTFLOWS; n++)
     BUF_SET(Sf,r,c,n,i,j,0.0); 
 }
@@ -283,7 +283,8 @@ void massBalance(
     outSum += outFlow;
   }
   h_next += inSum - outSum;
-  SET(Slt_next,c,i,j,h_next);
+  if (h_next > 0)
+    SET(Slt_next,c,i,j,h_next);
 
   if (inSum > 0 || outSum > 0) {
     residualLava -= outSum;
@@ -349,22 +350,25 @@ void computeNewTemperatureAndSolidification(
     if (h != 0) 
     {
       nT = T;
-
       aus = 1.0 + (3 * pow(nT, 3.0) * Pepsilon * Psigma * Pclock * Pcool) / (Prho * Pcv * h * Pac);
       st = nT / pow(aus, 1.0 / 3.0);
-      SET(St_next,c,i,j,st); //calSet2Dr(model, sciara->substates->St, i, j, st);
+      SET(St_next,c,i,j,st);
     }
 
     //solidification
     if (st <= PTsol && sh > 0)
     {
-      SET(Sz_next,c,i,j,sz+sh); //calSet2Dr(model, sciara->substates->Sz, i, j, sz + sh);
-      SET(Msl,c,i,j, GET(Msl,c,i,j)+sh); //calSetCurrent2Dr(model, sciara->substates->Msl, i, j, calGet2Dr(model, sciara->substates->Msl, i, j) + sh);
-      SET(Slt_next,c,i,j,0.0); //calSet2Dr(model, sciara->substates->Slt, i, j, 0);
-      SET(St_next,c,i,j,PTsol); //calSet2Dr(model, sciara->substates->St, i, j, sciara->PTsol);
+      SET(Sz_next,c,i,j,sz+sh);
+      SET(Msl,c,i,j, GET(Msl,c,i,j)+sh);
+      SET(Slt_next,c,i,j,0.0);
+      SET(St_next,c,i,j,PTsol);
     } 
     else
-      SET(Sz_next,c,i,j, sz); // calSet2Dr(model, sciara->substates->Sz, i, j, sz);
+    {
+      SET(Sz_next,c,i,j, sz);
+      SET(Slt_next,c,i,j,sh);
+      SET(St_next,c,i,j,st);
+    }
   }
 }
 
@@ -382,35 +386,17 @@ void swap_pointers(type*& p1, type*& p2)
 // ----------------------------------------------------------------------------
 int main(int argc, char **argv)
 {
-  // The adopted von Neuman neighborhood
-  // Format: flow_index:cell_label:(row_index,col_index)
-  //
-  //   cell_label in [0,1,2,3,4,5,6,7,8]: label assigned to each cell in the neighborhood
-  //   flow_index in   [0,1,2,3,4,5,6,7]: outgoing flow indices in Sf from cell 0 to the others
-  //       (row_index,col_index): 2D relative indices of the cells
-  //
-  //
-  //    cells               cells         outflows
-  //    coordinates         labels        indices
-  //
-  //   -1,-1|-1,0| 1,1      |5|1|8|       |4|0|7|
-  //    0,-1| 0,0| 0,1      |2|0|3|       |1| |2|
-  //    1,-1| 1,0|-1,1      |6|4|7|       |5|3|6|
-
   Sciara *sciara;
   init(sciara);
 
   // Input data 
   int max_steps = atoi(argv[MAX_STEPS_ID]);
   loadConfiguration(argv[INPUT_PATH_ID], sciara);
-
   SimulationInitialize(sciara);
 
   // Domain boundaries and neighborhood
   int i_start = 0, i_end = sciara->domain->rows-1;        // [i_start,i_end[: kernels application range along the rows
   int j_start = 0, j_end = sciara->domain->cols-1;        // [i_start,i_end[: kernels application range along the rows
-  // int Xi[] = {0, -1,  0,  0,  1, -1,  1,  1, -1}; // Xj: Moore neighborhood row coordinates (see below)
-  // int Xj[] = {0,  0, -1,  1,  0, -1, -1,  1,  1}; // Xj: Moore neighborhood col coordinates (see below)
 
   // Apply the init kernel (elementary process) to the whole domain grid (cellular space)
 #pragma omp parallel for
@@ -477,8 +463,7 @@ int main(int argc, char **argv)
 #pragma omp parallel for
     for (int i = i_start; i < i_end; i++)
       for (int j = j_start; j < j_end; j++)
-        massBalance (i, j, 
-            sciara->domain->rows, 
+        massBalance (i, j, sciara->domain->rows, 
             sciara->domain->cols, 
             sciara->X->Xi, 
             sciara->X->Xj, 
@@ -536,7 +521,6 @@ int main(int argc, char **argv)
             sciara->substates->Slt_next,
             sciara->substates->St,
             sciara->substates->St_next);
-
 
     sciara->simulation->elapsed_time += sciara->parameters->Pclock;
     sciara->simulation->step++;

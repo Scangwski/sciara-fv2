@@ -30,7 +30,7 @@ default:all
 
 # compila le versioni seriale e OpenMP
 all:
-	$(CPPC) *.cpp -o $(EXEC_SERIAL) -O0 -g
+	$(CPPC) *.cpp -o $(EXEC_SERIAL) -O3 -g
 #	$(CPPC) *.cpp -o $(EXEC) -fopenmp -O3
 
 

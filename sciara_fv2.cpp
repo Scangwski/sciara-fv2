@@ -91,24 +91,23 @@ void emitLava(
     double PTvent,
     double* Slt,
     double* Slt_next,
+    double* St,
     double* St_next)
 {
-  double emitted_lava = 0;
-  
+  int xVent;
+  int yVent;
+  double emitted_lava;
+
   for (int k = 0; k < vent.size(); k++)
   {
-    int xVent = vent[k].x();
-    int yVent = vent[k].y();
+    xVent = vent[k].x();
+    yVent = vent[k].y();
 
     if (i == yVent && j == xVent) 
     {
       emitted_lava = vent[k].thickness(elapsed_time, Pclock, emission_time, Pac);
-      if (emitted_lava > 0)
-      {
-        double h_new = GET(Slt, c, yVent, xVent) + emitted_lava;
-        SET(Slt_next, c, yVent, xVent, h_new);
-        SET(St_next,  c, yVent, xVent, PTvent); 
-      }
+      SET(Slt_next, c, yVent, xVent, GET(Slt, c, yVent, xVent) + emitted_lava);
+      SET(St_next,  c, yVent, xVent, PTvent); 
     }
   }
 }
@@ -225,11 +224,12 @@ void massBalance(
     double *St_next,
     double *Sf)
 {
-  int outFlowsIndexes[NUMBER_OF_OUTFLOWS] = { 3, 2, 1, 0, 6, 7, 4, 5 };
+  const int inflowsIndices[NUMBER_OF_OUTFLOWS] = { 3, 2, 1, 0, 6, 7, 4, 5 };
+
   int n;
   double initial_h = GET(Slt,c,i,j);
   double initial_t = GET(St,c,i,j);
-  double residualTemperature = initial_h * initial_t;
+  //double residualTemperature = initial_h * initial_t;
   double residualLava = initial_h;
   double h_next = initial_h;
   double t_next;
@@ -240,7 +240,7 @@ void massBalance(
 
   for (n = 1; n < MOORE_NEIGHBORS; n++)
   {
-    double inFlow = BUF_GET(Sf,r,c,outFlowsIndexes[n-1],i+Xi[n],j+Xj[n]);
+    double inFlow = BUF_GET(Sf,r,c,inflowsIndices[n-1],i+Xi[n],j+Xj[n]);
     double outFlow = BUF_GET(Sf,r,c,n-1,i,j);
     double neigh_t = GET(St,c,i+Xi[n],j+Xj[n]);
     ht += inFlow * neigh_t;
@@ -269,15 +269,12 @@ void boundaryConditions (int i, int j,
             double* St,
             double* St_next)
 {
-  //for (int n=0; n<NUMBER_OF_OUTFLOWS; n++)
-  //  BUF_SET(Sf,r,c,n,i,j,0.0);
-
   if (GET(Mb,c,i,j))
   {
     SET(Slt,     c,i,j,0.0);
-    SET(Slt_next,c,i,j,0.0);
+    //SET(Slt_next,c,i,j,0.0);
     SET(St,      c,i,j,0.0);
-    SET(St_next, c,i,j,0.0);
+    //SET(St_next, c,i,j,0.0);
   }
 }
 
@@ -305,9 +302,9 @@ void computeNewTemperatureAndSolidification(
     bool   *Mb)
 {
   double nT, h, T, aus;
-  double sz = GET(Sz,c,i,j); //calGet2Dr(model, sciara->substates->Sz, i, j);
-  double sh = GET(Slt,c,i,j); //calGet2Dr(model, sciara->substates->Slt, i, j);
-  double st = GET(St,c,i,j); //calGet2Dr(model, sciara->substates->St, i, j);
+  double sz = GET(Sz,c,i,j);
+  double sh = GET(Slt,c,i,j);
+  double st = GET(St,c,i,j);
 
   if (sh > 0 && GET(Mb,c,i,j) == false ) 
   {
@@ -367,8 +364,7 @@ int main(int argc, char **argv)
 
   util::Timer cl_timer;
   // simulation loop
-  while ( (max_steps > 0 && sciara->simulation->step < max_steps) 
-     /*|| sciara->simulation->elapsed_time <= sciara->simulation->effusion_duration */)
+  while ( (max_steps > 0 && sciara->simulation->step < max_steps)  &&  (sciara->simulation->elapsed_time <= sciara->simulation->effusion_duration) )
   {
     // Apply the emitLava kernel to the whole domain and update the Slt and St state variables
 #pragma omp parallel for
@@ -385,9 +381,8 @@ int main(int argc, char **argv)
             sciara->parameters->PTvent, 
             sciara->substates->Slt, 
             sciara->substates->Slt_next,
+            sciara->substates->St, 
             sciara->substates->St_next);
-    //calCopyBuffer2Dr(sciara->substates->Slt_next, sciara->substates->Slt, sciara->domain->rows, sciara->domain->cols);
-    //calCopyBuffer2Dr(sciara->substates->St_next,  sciara->substates->St,  sciara->domain->rows, sciara->domain->cols);
     swap_pointers(sciara->substates->Slt_next, sciara->substates->Slt);
     swap_pointers(sciara->substates->St_next,  sciara->substates->St);
 
@@ -423,8 +418,6 @@ int main(int argc, char **argv)
             sciara->substates->St, 
             sciara->substates->St_next, 
             sciara->substates->Sf);
-    //calCopyBuffer2Dr(sciara->substates->Slt_next, sciara->substates->Slt, sciara->domain->rows, sciara->domain->cols);
-    //calCopyBuffer2Dr(sciara->substates->St_next,  sciara->substates->St,  sciara->domain->rows, sciara->domain->cols);
     swap_pointers(sciara->substates->Slt_next, sciara->substates->Slt);
     swap_pointers(sciara->substates->St_next,  sciara->substates->St);
 
@@ -452,9 +445,6 @@ int main(int argc, char **argv)
             sciara->substates->Sf, 
             sciara->substates->Msl, 
             sciara->substates->Mb);
-    //calCopyBuffer2Dr(sciara->substates->Sz_next,  sciara->substates->Sz,  sciara->domain->rows, sciara->domain->cols);
-    //calCopyBuffer2Dr(sciara->substates->Slt_next, sciara->substates->Slt, sciara->domain->rows, sciara->domain->cols);
-    //calCopyBuffer2Dr(sciara->substates->St_next,  sciara->substates->St,  sciara->domain->rows, sciara->domain->cols);
     swap_pointers(sciara->substates->Sz_next,  sciara->substates->Sz);
     swap_pointers(sciara->substates->Slt_next, sciara->substates->Slt);
     swap_pointers(sciara->substates->St_next,  sciara->substates->St);
@@ -472,6 +462,7 @@ int main(int argc, char **argv)
             sciara->substates->Slt_next,
             sciara->substates->St,
             sciara->substates->St_next);
+
 
     sciara->simulation->elapsed_time += sciara->parameters->Pclock;
     sciara->simulation->step++;

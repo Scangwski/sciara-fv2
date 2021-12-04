@@ -74,42 +74,9 @@ void SimulationInitialize(Sciara* sciara)
       sciara->parameters->d);
 }
 
-void simulationInit (
-    int i, 
-    int j, 
-    int r, 
-    int c, 
-    double* Sz, 
-    double* Sz_next, 
-    double* Slt, 
-    double* Slt_next, 
-    double* St, 
-    double* St_next, 
-    double* Sf, 
-    bool* Mb)
-{
-  //SET(Sz_next, c,i,j,GET(Sz,c,i,j) ); 
-  //SET(Slt_next,c,i,j,GET(Slt,c,i,j) ); 
-  //SET(St_next, c,i,j,GET(St,c,i,j) ); 
-  //SET(Mb,      c,i,j,false); 
-  for (int n=0; n<NUMBER_OF_OUTFLOWS; n++)
-    BUF_SET(Sf,r,c,n,i,j,0.0); 
-}
-
 // ----------------------------------------------------------------------------
 // computing kernels, aka elementary processes in the XCA terminology
 // ----------------------------------------------------------------------------
-
-void update(
-    int i,
-    int j,
-    int r,
-    int c,
-    double* S,
-    double* S_next)
-{
-  SET(S,c,i,j,GET(S_next,c,i,j)); // S[i][j]=S_next[i][j];
-}
 
 void emitLava(
     int i,
@@ -145,7 +112,6 @@ void emitLava(
     }
   }
 }
-
 
 
 double powerLaw(double k1, double k2, double T)
@@ -243,8 +209,7 @@ void computeOutflows (
       f[k] = Pr[k] * (avg - H[k]);
 
   for (int k = 1; k < MOORE_NEIGHBORS; k++)
-    if (f[k] > 0) 
-      BUF_SET(Sf,r,c,k-1,i,j,f[k]);
+    BUF_SET(Sf,r,c,k-1,i,j,f[k]);
 }
 
 void massBalance(
@@ -286,14 +251,15 @@ void massBalance(
   if (h_next > 0)
     SET(Slt_next,c,i,j,h_next);
 
-  if (inSum > 0 || outSum > 0) {
+  if (inSum > 0 || outSum > 0)
+  {
     residualLava -= outSum;
     t_next = (residualLava * initial_t + ht) / (residualLava + inSum);
     SET(St_next,c,i,j,t_next);
   }
 }
 
-void resetFlowsAndBoundaries (int i, int j, 
+void boundaryConditions (int i, int j, 
             int r, 
             int c, 
             double* Sf,
@@ -303,8 +269,8 @@ void resetFlowsAndBoundaries (int i, int j,
             double* St,
             double* St_next)
 {
-  for (int n=0; n<NUMBER_OF_OUTFLOWS; n++)
-    BUF_SET(Sf,r,c,n,i,j,0.0);
+  //for (int n=0; n<NUMBER_OF_OUTFLOWS; n++)
+  //  BUF_SET(Sf,r,c,n,i,j,0.0);
 
   if (GET(Mb,c,i,j))
   {
@@ -398,21 +364,6 @@ int main(int argc, char **argv)
   int i_start = 0, i_end = sciara->domain->rows-1;        // [i_start,i_end[: kernels application range along the rows
   int j_start = 0, j_end = sciara->domain->cols-1;        // [i_start,i_end[: kernels application range along the rows
 
-  // Apply the init kernel (elementary process) to the whole domain grid (cellular space)
-#pragma omp parallel for
-  for (int i = i_start; i < i_end; i++)
-    for (int j = j_start; j < j_end; j++)
-      simulationInit(i, j, 
-          sciara->domain->rows, 
-          sciara->domain->cols, 
-          sciara->substates->Sz, 
-          sciara->substates->Sz_next, 
-          sciara->substates->Slt, 
-          sciara->substates->Slt_next, 
-          sciara->substates->St, 
-          sciara->substates->St_next, 
-          sciara->substates->Sf, 
-          sciara->substates->Mb);
 
   util::Timer cl_timer;
   // simulation loop
@@ -435,10 +386,10 @@ int main(int argc, char **argv)
             sciara->substates->Slt, 
             sciara->substates->Slt_next,
             sciara->substates->St_next);
-    calCopyBuffer2Dr(sciara->substates->Slt_next, sciara->substates->Slt, sciara->domain->rows, sciara->domain->cols);
-    calCopyBuffer2Dr(sciara->substates->St_next,  sciara->substates->St,  sciara->domain->rows, sciara->domain->cols);
-    //swap_pointers(sciara->substates->Slt_next, sciara->substates->Slt);
-    //swap_pointers(sciara->substates->St_next,  sciara->substates->St);
+    //calCopyBuffer2Dr(sciara->substates->Slt_next, sciara->substates->Slt, sciara->domain->rows, sciara->domain->cols);
+    //calCopyBuffer2Dr(sciara->substates->St_next,  sciara->substates->St,  sciara->domain->rows, sciara->domain->cols);
+    swap_pointers(sciara->substates->Slt_next, sciara->substates->Slt);
+    swap_pointers(sciara->substates->St_next,  sciara->substates->St);
 
     // Apply the computeOutflows kernel to the whole domain
 #pragma omp parallel for
@@ -472,10 +423,10 @@ int main(int argc, char **argv)
             sciara->substates->St, 
             sciara->substates->St_next, 
             sciara->substates->Sf);
-    calCopyBuffer2Dr(sciara->substates->Slt_next, sciara->substates->Slt, sciara->domain->rows, sciara->domain->cols);
-    calCopyBuffer2Dr(sciara->substates->St_next,  sciara->substates->St,  sciara->domain->rows, sciara->domain->cols);
-    //swap_pointers(sciara->substates->Slt_next, sciara->substates->Slt);
-    //swap_pointers(sciara->substates->St_next,  sciara->substates->St);
+    //calCopyBuffer2Dr(sciara->substates->Slt_next, sciara->substates->Slt, sciara->domain->rows, sciara->domain->cols);
+    //calCopyBuffer2Dr(sciara->substates->St_next,  sciara->substates->St,  sciara->domain->rows, sciara->domain->cols);
+    swap_pointers(sciara->substates->Slt_next, sciara->substates->Slt);
+    swap_pointers(sciara->substates->St_next,  sciara->substates->St);
 
     // Apply the computeNewTemperatureAndSolidification kernel to the whole domain
 #pragma omp parallel for
@@ -501,18 +452,18 @@ int main(int argc, char **argv)
             sciara->substates->Sf, 
             sciara->substates->Msl, 
             sciara->substates->Mb);
-    calCopyBuffer2Dr(sciara->substates->Sz_next,  sciara->substates->Sz,  sciara->domain->rows, sciara->domain->cols);
-    calCopyBuffer2Dr(sciara->substates->Slt_next, sciara->substates->Slt, sciara->domain->rows, sciara->domain->cols);
-    calCopyBuffer2Dr(sciara->substates->St_next,  sciara->substates->St,  sciara->domain->rows, sciara->domain->cols);
-    //swap_pointers(sciara->substates->Sz_next,  sciara->substates->Sz);
-    //swap_pointers(sciara->substates->Slt_next, sciara->substates->Slt);
-    //swap_pointers(sciara->substates->St_next,  sciara->substates->St);
+    //calCopyBuffer2Dr(sciara->substates->Sz_next,  sciara->substates->Sz,  sciara->domain->rows, sciara->domain->cols);
+    //calCopyBuffer2Dr(sciara->substates->Slt_next, sciara->substates->Slt, sciara->domain->rows, sciara->domain->cols);
+    //calCopyBuffer2Dr(sciara->substates->St_next,  sciara->substates->St,  sciara->domain->rows, sciara->domain->cols);
+    swap_pointers(sciara->substates->Sz_next,  sciara->substates->Sz);
+    swap_pointers(sciara->substates->Slt_next, sciara->substates->Slt);
+    swap_pointers(sciara->substates->St_next,  sciara->substates->St);
 
-    // Apply the resetFlows kernel to the whole domain and update the Slt and St state variables
+    // Apply the boundaryConditions kernel to the whole domain and update the Slt and St state variables
 #pragma omp parallel for
     for (int i = i_start; i < i_end; i++)
       for (int j = j_start; j < j_end; j++)
-        resetFlowsAndBoundaries (i, j, 
+        boundaryConditions (i, j, 
             sciara->domain->rows, 
             sciara->domain->cols, 
             sciara->substates->Sf,

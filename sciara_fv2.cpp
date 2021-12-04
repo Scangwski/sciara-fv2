@@ -225,37 +225,28 @@ void massBalance(
     double *Sf)
 {
   const int inflowsIndices[NUMBER_OF_OUTFLOWS] = { 3, 2, 1, 0, 6, 7, 4, 5 };
-
-  int n;
-  double initial_h = GET(Slt,c,i,j);
+  double inFlow;
+  double outFlow;
+  double neigh_t;
   double initial_t = GET(St,c,i,j);
-  //double residualTemperature = initial_h * initial_t;
-  double residualLava = initial_h;
-  double h_next = initial_h;
-  double t_next;
+  double h_next = GET(Slt,c,i,j);
+  double t_next = GET(Slt,c,i,j) * initial_t;
 
-  double ht = 0;
-  double inSum = 0;
-  double outSum = 0;
-
-  for (n = 1; n < MOORE_NEIGHBORS; n++)
+  for (int n = 1; n < MOORE_NEIGHBORS; n++)
   {
-    double inFlow = BUF_GET(Sf,r,c,inflowsIndices[n-1],i+Xi[n],j+Xj[n]);
-    double outFlow = BUF_GET(Sf,r,c,n-1,i,j);
-    double neigh_t = GET(St,c,i+Xi[n],j+Xj[n]);
-    ht += inFlow * neigh_t;
-    inSum += inFlow;
-    outSum += outFlow;
+    inFlow  = BUF_GET(Sf,r,c,inflowsIndices[n-1],i+Xi[n],j+Xj[n]);
+    outFlow = BUF_GET(Sf,r,c,n-1,i,j);
+    neigh_t = GET(St,c,i+Xi[n],j+Xj[n]);
+
+    h_next +=  inFlow - outFlow;
+    t_next += (inFlow * neigh_t - outFlow * initial_t);
   }
-  h_next += inSum - outSum;
-  if (h_next > 0)
-    SET(Slt_next,c,i,j,h_next);
 
-  if (inSum > 0 || outSum > 0)
+  if (h_next > 0)
   {
-    residualLava -= outSum;
-    t_next = (residualLava * initial_t + ht) / (residualLava + inSum);
+    t_next /= h_next;
     SET(St_next,c,i,j,t_next);
+    SET(Slt_next,c,i,j,h_next);
   }
 }
 
@@ -409,7 +400,7 @@ int main(int argc, char **argv)
 #pragma omp parallel for
     for (int i = i_start; i < i_end; i++)
       for (int j = j_start; j < j_end; j++)
-        massBalance (i, j, sciara->domain->rows, 
+        massBalance(i, j, sciara->domain->rows, 
             sciara->domain->cols, 
             sciara->X->Xi, 
             sciara->X->Xj, 

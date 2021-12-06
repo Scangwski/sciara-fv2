@@ -106,9 +106,15 @@ void emitLava(
     if (i == yVent && j == xVent) 
     {
       emitted_lava = vent[k].thickness(elapsed_time, Pclock, emission_time, Pac);
-      SET(Slt_next, c, yVent, xVent, GET(Slt, c, yVent, xVent) + emitted_lava);
-      SET(St_next,  c, yVent, xVent, PTvent); 
+      SET(Slt_next, c, i, j, GET(Slt, c, i, j) + emitted_lava);
+      SET(St_next,  c, i, j, PTvent); 
     }
+    else
+    {
+      SET(Slt_next, c, i, j, GET(Slt, c, i, j));
+      SET(St_next,  c, i, j, GET(St, c, i, j)); 
+    }
+
   }
 }
 
@@ -234,9 +240,10 @@ void massBalance(
 
   for (int n = 1; n < MOORE_NEIGHBORS; n++)
   {
-    inFlow  = BUF_GET(Sf,r,c,inflowsIndices[n-1],i+Xi[n],j+Xj[n]);
-    outFlow = BUF_GET(Sf,r,c,n-1,i,j);
     neigh_t = GET(St,c,i+Xi[n],j+Xj[n]);
+    inFlow  = BUF_GET(Sf,r,c,inflowsIndices[n-1],i+Xi[n],j+Xj[n]);
+
+    outFlow = BUF_GET(Sf,r,c,n-1,i,j);
 
     h_next +=  inFlow - outFlow;
     t_next += (inFlow * neigh_t - outFlow * initial_t);
@@ -246,6 +253,11 @@ void massBalance(
   {
     t_next /= h_next;
     SET(St_next,c,i,j,t_next);
+    SET(Slt_next,c,i,j,h_next);
+  }
+  else
+  {
+    SET(St_next,c,i,j,0.0);
     SET(Slt_next,c,i,j,h_next);
   }
 }

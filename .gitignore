@@ -1,3 +1,4 @@
+*.aux.xml
 *.o
 *output*
 sciara_omp

@@ -53,6 +53,7 @@ void SimulationInitialize(Sciara* sciara)
       maximum_number_of_emissions = sciara->simulation->emission_rate[i].size();
   //maximum_steps_from_emissions = (int)(emission_time/Pclock*maximum_number_of_emissions);
   sciara->simulation->effusion_duration = sciara->simulation->emission_time * maximum_number_of_emissions;
+  sciara->simulation->total_emitted_lava = 0;
 
   //definisce il bordo della morfologia
   MakeBorder(sciara);
@@ -87,6 +88,7 @@ void emitLava(
     double elapsed_time,
     double Pclock,
     double emission_time,
+    double& total_emitted_lava,
     double Pac,
     double PTvent,
     double* Slt,
@@ -96,7 +98,10 @@ void emitLava(
 {
   int xVent;
   int yVent;
+  double current_lava;
   double emitted_lava;
+  double next_lava;
+  double current_temperature;
 
   for (int k = 0; k < vent.size(); k++)
   {
@@ -105,16 +110,14 @@ void emitLava(
 
     if (i == yVent && j == xVent) 
     {
+      current_lava = GET(Slt, c, i, j);
       emitted_lava = vent[k].thickness(elapsed_time, Pclock, emission_time, Pac);
-      SET(Slt_next, c, i, j, GET(Slt, c, i, j) + emitted_lava);
+      next_lava = current_lava + emitted_lava;
+      total_emitted_lava += emitted_lava;
+      
+      SET(Slt_next, c, i, j, next_lava);
       SET(St_next,  c, i, j, PTvent); 
     }
-    else
-    {
-      SET(Slt_next, c, i, j, GET(Slt, c, i, j));
-      SET(St_next,  c, i, j, GET(St, c, i, j)); 
-    }
-
   }
 }
 
@@ -234,9 +237,10 @@ void massBalance(
   double inFlow;
   double outFlow;
   double neigh_t;
+  double initial_h = GET(Slt,c,i,j);
   double initial_t = GET(St,c,i,j);
-  double h_next = GET(Slt,c,i,j);
-  double t_next = GET(Slt,c,i,j) * initial_t;
+  double h_next = initial_h;
+  double t_next = initial_h * initial_t;
 
   for (int n = 1; n < MOORE_NEIGHBORS; n++)
   {
@@ -255,11 +259,6 @@ void massBalance(
     SET(St_next,c,i,j,t_next);
     SET(Slt_next,c,i,j,h_next);
   }
-  else
-  {
-    SET(St_next,c,i,j,0.0);
-    SET(Slt_next,c,i,j,h_next);
-  }
 }
 
 void boundaryConditions (int i, int j, 
@@ -272,12 +271,11 @@ void boundaryConditions (int i, int j,
             double* St,
             double* St_next)
 {
+  return;
   if (GET(Mb,c,i,j))
   {
-    SET(Slt,     c,i,j,0.0);
-    //SET(Slt_next,c,i,j,0.0);
-    SET(St,      c,i,j,0.0);
-    //SET(St_next, c,i,j,0.0);
+    SET(Slt_next,c,i,j,0.0);
+    SET(St_next, c,i,j,0.0);
   }
 }
 
@@ -304,37 +302,26 @@ void computeNewTemperatureAndSolidification(
     double *Msl,
     bool   *Mb)
 {
-  double nT, h, T, aus;
-  double sz = GET(Sz,c,i,j);
-  double sh = GET(Slt,c,i,j);
-  double st = GET(St,c,i,j);
+  double nT, aus;
+  double z = GET(Sz,c,i,j);
+  double h = GET(Slt,c,i,j);
+  double T = GET(St,c,i,j);
 
-  if (sh > 0 && GET(Mb,c,i,j) == false ) 
+  if (h > 0 && GET(Mb,c,i,j) == false ) 
   {
-    h = sh;
-    T = st;
-    if (h != 0) 
-    {
-      nT = T;
-      aus = 1.0 + (3 * pow(nT, 3.0) * Pepsilon * Psigma * Pclock * Pcool) / (Prho * Pcv * h * Pac);
-      st = nT / pow(aus, 1.0 / 3.0);
-      SET(St_next,c,i,j,st);
-    }
+    aus = 1.0 + (3 * pow(T, 3.0) * Pepsilon * Psigma * Pclock * Pcool) / (Prho * Pcv * h * Pac);
+    nT = T / pow(aus, 1.0 / 3.0);
 
-    //solidification
-    if (st <= PTsol && sh > 0)
+    if (nT > PTsol) // no solidification
+      SET(St_next,c,i,j, nT);
+    else            // solidification
     {
-      SET(Sz_next,c,i,j,sz+sh);
-      SET(Msl,c,i,j, GET(Msl,c,i,j)+sh);
+      SET(Sz_next,c,i,j,z+h);
       SET(Slt_next,c,i,j,0.0);
       SET(St_next,c,i,j,PTsol);
-    } 
-    else
-    {
-      SET(Sz_next,c,i,j, sz);
-      SET(Slt_next,c,i,j,sh);
-      SET(St_next,c,i,j,st);
+      SET(Msl,c,i,j, GET(Msl,c,i,j)+h);
     }
+
   }
 }
 
@@ -364,11 +351,17 @@ int main(int argc, char **argv)
   int i_start = 0, i_end = sciara->domain->rows-1;        // [i_start,i_end[: kernels application range along the rows
   int j_start = 0, j_end = sciara->domain->cols-1;        // [i_start,i_end[: kernels application range along the rows
 
+  double total_current_lava = 0.0;
+  double total_outflows = 0.0;
 
   util::Timer cl_timer;
   // simulation loop
   while ( (max_steps > 0 && sciara->simulation->step < max_steps)  &&  (sciara->simulation->elapsed_time <= sciara->simulation->effusion_duration) )
   {
+    sciara->simulation->elapsed_time += sciara->parameters->Pclock;
+    sciara->simulation->step++;
+
+
     // Apply the emitLava kernel to the whole domain and update the Slt and St state variables
 #pragma omp parallel for
     for (int i = i_start; i < i_end; i++)
@@ -380,14 +373,18 @@ int main(int argc, char **argv)
             sciara->simulation->elapsed_time, 
             sciara->parameters->Pclock, 
             sciara->simulation->emission_time, 
+            sciara->simulation->total_emitted_lava,
             sciara->parameters->Pac, 
             sciara->parameters->PTvent, 
             sciara->substates->Slt, 
             sciara->substates->Slt_next,
             sciara->substates->St, 
             sciara->substates->St_next);
-    swap_pointers(sciara->substates->Slt_next, sciara->substates->Slt);
-    swap_pointers(sciara->substates->St_next,  sciara->substates->St);
+    //swap_pointers(sciara->substates->Slt_next, sciara->substates->Slt);
+    //swap_pointers(sciara->substates->St_next,  sciara->substates->St);
+    memcpy(sciara->substates->Slt, sciara->substates->Slt_next, sizeof(double)*sciara->domain->rows*sciara->domain->cols);
+    memcpy(sciara->substates->St,  sciara->substates->St_next,  sizeof(double)*sciara->domain->rows*sciara->domain->cols);
+
 
     // Apply the computeOutflows kernel to the whole domain
 #pragma omp parallel for
@@ -408,11 +405,13 @@ int main(int argc, char **argv)
             sciara->parameters->c, 
             sciara->parameters->d);
 
+
     // Apply the massBalance mass balance kernel to the whole domain and update the Slt and St state variables
 #pragma omp parallel for
     for (int i = i_start; i < i_end; i++)
       for (int j = j_start; j < j_end; j++)
-        massBalance(i, j, sciara->domain->rows, 
+        massBalance(i, j,
+            sciara->domain->rows, 
             sciara->domain->cols, 
             sciara->X->Xi, 
             sciara->X->Xj, 
@@ -421,8 +420,11 @@ int main(int argc, char **argv)
             sciara->substates->St, 
             sciara->substates->St_next, 
             sciara->substates->Sf);
-    swap_pointers(sciara->substates->Slt_next, sciara->substates->Slt);
-    swap_pointers(sciara->substates->St_next,  sciara->substates->St);
+    //swap_pointers(sciara->substates->Slt_next, sciara->substates->Slt);
+    //swap_pointers(sciara->substates->St_next,  sciara->substates->St);
+    memcpy(sciara->substates->Slt, sciara->substates->Slt_next, sizeof(double)*sciara->domain->rows*sciara->domain->cols);
+    memcpy(sciara->substates->St,  sciara->substates->St_next,  sizeof(double)*sciara->domain->rows*sciara->domain->cols);
+
 
     // Apply the computeNewTemperatureAndSolidification kernel to the whole domain
 #pragma omp parallel for
@@ -448,9 +450,13 @@ int main(int argc, char **argv)
             sciara->substates->Sf, 
             sciara->substates->Msl, 
             sciara->substates->Mb);
-    swap_pointers(sciara->substates->Sz_next,  sciara->substates->Sz);
-    swap_pointers(sciara->substates->Slt_next, sciara->substates->Slt);
-    swap_pointers(sciara->substates->St_next,  sciara->substates->St);
+    //swap_pointers(sciara->substates->Sz_next,  sciara->substates->Sz);
+    //swap_pointers(sciara->substates->Slt_next, sciara->substates->Slt);
+    //swap_pointers(sciara->substates->St_next,  sciara->substates->St);
+    memcpy(sciara->substates->Sz,  sciara->substates->Sz_next,  sizeof(double)*sciara->domain->rows*sciara->domain->cols);
+    memcpy(sciara->substates->Slt, sciara->substates->Slt_next, sizeof(double)*sciara->domain->rows*sciara->domain->cols);
+    memcpy(sciara->substates->St,  sciara->substates->St_next,  sizeof(double)*sciara->domain->rows*sciara->domain->cols);
+
 
     // Apply the boundaryConditions kernel to the whole domain and update the Slt and St state variables
 #pragma omp parallel for
@@ -465,21 +471,33 @@ int main(int argc, char **argv)
             sciara->substates->Slt_next,
             sciara->substates->St,
             sciara->substates->St_next);
+    memcpy(sciara->substates->Slt, sciara->substates->Slt_next, sizeof(double)*sciara->domain->rows*sciara->domain->cols);
+    memcpy(sciara->substates->St,  sciara->substates->St_next,  sizeof(double)*sciara->domain->rows*sciara->domain->cols);
 
-
-    sciara->simulation->elapsed_time += sciara->parameters->Pclock;
-    sciara->simulation->step++;
   }
+
+
+  // Compute the current amount of lava on the surface
+  total_current_lava = 0.0;
+  total_outflows = 0.0;
+  for (int i = 0; i < sciara->domain->rows; i++)
+    for (int j = 0; j < sciara->domain->cols; j++)
+    {
+      total_current_lava += GET(sciara->substates->Slt,sciara->domain->cols,i,j) + GET(sciara->substates->Msl,sciara->domain->cols,i,j);
+      for (int n = 0; n < NUMBER_OF_OUTFLOWS; n++)
+        total_outflows += BUF_GET(sciara->substates->Sf,sciara->domain->rows,sciara->domain->cols,n,i,j);
+    }
 
   double cl_time = static_cast<double>(cl_timer.getTimeMilliseconds()) / 1000.0;
   printf("Elapsed time: %lf [s]\n", cl_time);
+  printf("Emitted lava: %lf [m]\n", sciara->simulation->total_emitted_lava);
+  printf("Current lava: %lf [m]\n", total_current_lava);
+  printf("Current outf: %lf [m]\n", total_outflows);
 
   printf("Saving output to %s...\n", argv[OUTPUT_PATH_ID]);
   saveConfiguration(argv[OUTPUT_PATH_ID], sciara);
 
   printf("Releasing memory...\n");
-  //deallocateSubstates(sciara);
-  //delete sciara;
   finalize(sciara);
 
   return 0;

@@ -6,14 +6,14 @@ endif
 # INPUT_CONFIG="./data/test/test_000000000000.cfg"
 # OUTPUT_CONFIG="./data/test/output_test"
 # STEPS=1
-INPUT_CONFIG="./data/2001/2001_000000000000.cfg"
-OUTPUT_CONFIG="./data/2001/output_2001"
-STEPS=36000
-# INPUT_CONFIG="./data/2006/2006_000000000000.cfg"
-# OUTPUT_CONFIG="./data/2006/output_2006"
-# STEPS=1000
+# INPUT_CONFIG="./data/2001/2001_000000000000.cfg"
+# OUTPUT_CONFIG="./data/2001/output_2001"
+# STEPS=36000 
+INPUT_CONFIG="./data/2006/2006_000000000000.cfg"
+OUTPUT_CONFIG="./data/2006/output_2006"
+STEPS=10800
 
-# vim's :Termdebug string
+# vim's :Termdebug run commands
 # Run ./data/test/test_000000000000.cfg ./data/2006_OUT/output_2006 1
 # Run ./data/2001/2001_000000000000.cfg ./data/2001_OUT/output_2001 1000
 # Run ./data/2006/2006_000000000000.cfg ./data/2006_OUT/output_2006 1000
@@ -30,7 +30,7 @@ default:all
 
 # compila le versioni seriale e OpenMP
 all:
-	$(CPPC) *.cpp -o $(EXEC_SERIAL) -O3 -g
+	$(CPPC) *.cpp -o $(EXEC_SERIAL) -O0 -g
 #	$(CPPC) *.cpp -o $(EXEC) -fopenmp -O3
 
 

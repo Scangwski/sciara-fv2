@@ -29,6 +29,50 @@ void deallocateSubstates(Sciara *sciara)
 	if(sciara->substates->Msl)      delete[] sciara->substates->Msl;
 }
 
+
+void evaluatePowerLawParams(double PTvent, double PTsol, double value_sol, double value_vent, double &k1, double &k2)
+{
+	k2 = ( log10(value_vent) - log10(value_sol) ) / (PTvent - PTsol) ;
+	k1 = log10(value_sol) - k2*(PTsol);
+}
+
+void simulationInitialize(Sciara* sciara)
+{
+  //dichiarazioni
+  unsigned int maximum_number_of_emissions = 0;
+
+  //azzeramento dello step dell'AC
+  sciara->simulation->step = 0;
+  sciara->simulation->elapsed_time = 0;
+
+  //determinazione numero massimo di passi
+  for (unsigned int i = 0; i < sciara->simulation->emission_rate.size(); i++)
+    if (maximum_number_of_emissions < sciara->simulation->emission_rate[i].size())
+      maximum_number_of_emissions = sciara->simulation->emission_rate[i].size();
+  //maximum_steps_from_emissions = (int)(emission_time/Pclock*maximum_number_of_emissions);
+  sciara->simulation->effusion_duration = sciara->simulation->emission_time * maximum_number_of_emissions;
+  sciara->simulation->total_emitted_lava = 0;
+
+  //definisce il bordo della morfologia
+  MakeBorder(sciara);
+
+  //calcolo a b (parametri viscosità) c d (parametri resistenza al taglio)
+  evaluatePowerLawParams(
+      sciara->parameters->PTvent, 
+      sciara->parameters->PTsol, 
+      sciara->parameters->Pr_Tsol,  
+      sciara->parameters->Pr_Tvent,  
+      sciara->parameters->a, 
+      sciara->parameters->b);
+  evaluatePowerLawParams(
+      sciara->parameters->PTvent,
+      sciara->parameters->PTsol,
+      sciara->parameters->Phc_Tsol,
+      sciara->parameters->Phc_Tvent,
+      sciara->parameters->c,
+      sciara->parameters->d);
+}
+
 int _Xi[] = {0, -1,  0,  0,  1, -1,  1,  1, -1}; // Xj: Moore neighborhood row coordinates (see below)
 int _Xj[] = {0,  0, -1,  1,  0, -1, -1,  1,  1}; // Xj: Moore neighborhood col coordinates (see below)
 void init(Sciara*& sciara)
@@ -105,5 +149,4 @@ void MakeBorder(Sciara *sciara)
 						break;
 					}
 			}
-
 }

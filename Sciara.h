@@ -114,6 +114,7 @@ void MakeBorder(Sciara *sciara);
 // ----------------------------------------------------------------------------
 
 void init(Sciara*& sciara);
+void simulationInitialize(Sciara* sciara);
 void allocateSubstates(Sciara *sciara);
 //void deallocateSubstates(Sciara *sciara);
 void finalize(Sciara*& sciara);

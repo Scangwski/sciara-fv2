@@ -31,50 +31,6 @@
 // ----------------------------------------------------------------------------
 // init kernel, called once before the simulation loop
 // ----------------------------------------------------------------------------
-
-void evaluatePowerLawParams(double PTvent, double PTsol, double value_sol, double value_vent, double &k1, double &k2)
-{
-	k2 = ( log10(value_vent) - log10(value_sol) ) / (PTvent - PTsol) ;
-	k1 = log10(value_sol) - k2*(PTsol);
-}
-
-void SimulationInitialize(Sciara* sciara)
-{
-  //dichiarazioni
-  unsigned int maximum_number_of_emissions = 0;
-
-  //azzeramento dello step dell'AC
-  sciara->simulation->step = 0;
-  sciara->simulation->elapsed_time = 0;
-
-  //determinazione numero massimo di passi
-  for (unsigned int i = 0; i < sciara->simulation->emission_rate.size(); i++)
-    if (maximum_number_of_emissions < sciara->simulation->emission_rate[i].size())
-      maximum_number_of_emissions = sciara->simulation->emission_rate[i].size();
-  //maximum_steps_from_emissions = (int)(emission_time/Pclock*maximum_number_of_emissions);
-  sciara->simulation->effusion_duration = sciara->simulation->emission_time * maximum_number_of_emissions;
-  sciara->simulation->total_emitted_lava = 0;
-
-  //definisce il bordo della morfologia
-  MakeBorder(sciara);
-
-  //calcolo a b (parametri viscosità) c d (parametri resistenza al taglio)
-  evaluatePowerLawParams(
-      sciara->parameters->PTvent, 
-      sciara->parameters->PTsol, 
-      sciara->parameters->Pr_Tsol,  
-      sciara->parameters->Pr_Tvent,  
-      sciara->parameters->a, 
-      sciara->parameters->b);
-  evaluatePowerLawParams(
-      sciara->parameters->PTvent,
-      sciara->parameters->PTsol,
-      sciara->parameters->Phc_Tsol,
-      sciara->parameters->Phc_Tvent,
-      sciara->parameters->c,
-      sciara->parameters->d);
-}
-
 // ----------------------------------------------------------------------------
 // computing kernels, aka elementary processes in the XCA terminology
 // ----------------------------------------------------------------------------
@@ -93,32 +49,16 @@ void emitLava(
     double PTvent,
     double* Slt,
     double* Slt_next,
-    double* St,
     double* St_next)
 {
-  int xVent;
-  int yVent;
-  double current_lava;
-  double emitted_lava;
-  double next_lava;
-  double current_temperature;
-
   for (int k = 0; k < vent.size(); k++)
-  {
-    xVent = vent[k].x();
-    yVent = vent[k].y();
-
-    if (i == yVent && j == xVent) 
+    if (i == vent[k].y() && j == vent[k].x()) 
     {
-      current_lava = GET(Slt, c, i, j);
-      emitted_lava = vent[k].thickness(elapsed_time, Pclock, emission_time, Pac);
-      next_lava = current_lava + emitted_lava;
-      total_emitted_lava += emitted_lava;
-      
-      SET(Slt_next, c, i, j, next_lava);
+      SET(Slt_next, c, i, j, GET(Slt, c, i, j) + vent[k].thickness(elapsed_time, Pclock, emission_time, Pac));
       SET(St_next,  c, i, j, PTvent); 
+
+      total_emitted_lava += vent[k].thickness(elapsed_time, Pclock, emission_time, Pac);
     }
-  }
 }
 
 
@@ -145,79 +85,80 @@ void computeOutflows (
     double  _c,
     double  _d)
 {
-  bool n_eliminated[MOORE_NEIGHBORS];
+  bool   eliminated[MOORE_NEIGHBORS];
   double z[MOORE_NEIGHBORS];
   double h[MOORE_NEIGHBORS];
   double H[MOORE_NEIGHBORS];
   double theta[MOORE_NEIGHBORS];
   double w[MOORE_NEIGHBORS];		//Distances between central and adjecent cells
   double Pr[MOORE_NEIGHBORS];		//Relaiation rate arraj
+  double f[MOORE_NEIGHBORS];
   bool loop;
   int counter;
-  double avg, _w, _Pr, hc, sum, sumZ;
+  double sz0, sz, t, avg, _Pr, hc;
 
-  double	f[MOORE_NEIGHBORS];
-
-  double t = GET(St, c, i, j);
 
   if (GET(Slt,c,i,j) <=0)
     return;
 
-  _w = Pc;
+
+  t = GET(St, c, i, j);
   _Pr = powerLaw(_a, _b, t);
   hc = powerLaw(_c, _d, t);
+
   for (int k = 0; k < MOORE_NEIGHBORS; k++)
   {
-    h[k] = GET(Slt, c, i+Xi[k], j+Xj[k]);
-    H[k] = f[k] = theta[k] = 0;
-    w[k] = _w;
-    Pr[k] = _Pr;
-    double sz = GET(Sz, c, i+Xi[k], j+Xj[k]);
-    double sz0 = GET(Sz, c, i, j);
+    sz0      = GET(Sz, c, i, j);
+    sz       = GET(Sz, c, i+Xi[k], j+Xj[k]);
+    h[k]     = GET(Slt, c, i+Xi[k], j+Xj[k]);
+    H[k]     = 0;
+    theta[k] = 0;
+    w[k]     = Pc;
+    Pr[k]    = _Pr;
 
     if (k < VON_NEUMANN_NEIGHBORS)
-      z[k] = GET(Sz, c, i+Xi[k], j+Xj[k]);
+      z[k] = sz;
     else
       z[k] = sz0 - (sz0 - sz) / sqrt(2.0);
   }
 
   H[0] = z[0];
-  n_eliminated[0] = true;
+  eliminated[0] = false;
 
   for (int k = 1; k < MOORE_NEIGHBORS; k++)
     if (z[0] + h[0] > z[k] + h[k])
     {
       H[k] = z[k] + h[k];
       theta[k] = atan(((z[0] + h[0]) - (z[k] + h[k])) / w[k]);
-      n_eliminated[k] = true;
+      eliminated[k] = false;
     } 
     else
-      n_eliminated[k] = false;
+      eliminated[k] = true;
 
   do {
     loop = false;
     avg = h[0];
     counter = 0;
     for (int k = 0; k < MOORE_NEIGHBORS; k++)
-      if (n_eliminated[k]) {
+      if (!eliminated[k]) {
         avg += H[k];
         counter++;
       }
     if (counter != 0)
       avg = avg / double(counter);
     for (int k = 0; k < MOORE_NEIGHBORS; k++)
-      if (n_eliminated[k] && avg <= H[k]) {
-        n_eliminated[k] = false;
+      if (!eliminated[k] && avg <= H[k]) {
+        eliminated[k] = true;
         loop = true;
       }
   } while (loop);
 
   for (int k = 1; k < MOORE_NEIGHBORS; k++) 
-    if (n_eliminated[k] && h[0] > hc * cos(theta[k]))
-      f[k] = Pr[k] * (avg - H[k]);
-
-  for (int k = 1; k < MOORE_NEIGHBORS; k++)
-    BUF_SET(Sf,r,c,k-1,i,j,f[k]);
+    if (!eliminated[k] && h[0] > hc * cos(theta[k]))
+      //f[k] = Pr[k] * (avg - H[k]);
+      BUF_SET(Sf,r,c,k-1,i,j, Pr[k]*(avg - H[k]));
+    else
+      BUF_SET(Sf,r,c,k-1,i,j,0.0);
 }
 
 void massBalance(
@@ -326,14 +267,6 @@ void computeNewTemperatureAndSolidification(
 }
 
 
-template <typename type>
-void swap_pointers(type*& p1, type*& p2)
-{
-  type *pt = p1;
-  p1 = p2;
-  p2 = pt;
-}
-
 // ----------------------------------------------------------------------------
 // Function main()
 // ----------------------------------------------------------------------------
@@ -345,17 +278,14 @@ int main(int argc, char **argv)
   // Input data 
   int max_steps = atoi(argv[MAX_STEPS_ID]);
   loadConfiguration(argv[INPUT_PATH_ID], sciara);
-  SimulationInitialize(sciara);
 
   // Domain boundaries and neighborhood
-  int i_start = 0, i_end = sciara->domain->rows-1;        // [i_start,i_end[: kernels application range along the rows
-  int j_start = 0, j_end = sciara->domain->cols-1;        // [i_start,i_end[: kernels application range along the rows
+  int i_start = 0, i_end = sciara->domain->rows;        // [i_start,i_end[: kernels application range along the rows
+  int j_start = 0, j_end = sciara->domain->cols;        // [j_start,j_end[: kernels application range along the cols
 
-  double total_current_lava = 0.0;
-  double total_outflows = 0.0;
-
+  // simulation initialization and loop
+  simulationInitialize(sciara);
   util::Timer cl_timer;
-  // simulation loop
   while ( (max_steps > 0 && sciara->simulation->step < max_steps)  &&  (sciara->simulation->elapsed_time <= sciara->simulation->effusion_duration) )
   {
     sciara->simulation->elapsed_time += sciara->parameters->Pclock;
@@ -378,10 +308,7 @@ int main(int argc, char **argv)
             sciara->parameters->PTvent, 
             sciara->substates->Slt, 
             sciara->substates->Slt_next,
-            sciara->substates->St, 
             sciara->substates->St_next);
-    //swap_pointers(sciara->substates->Slt_next, sciara->substates->Slt);
-    //swap_pointers(sciara->substates->St_next,  sciara->substates->St);
     memcpy(sciara->substates->Slt, sciara->substates->Slt_next, sizeof(double)*sciara->domain->rows*sciara->domain->cols);
     memcpy(sciara->substates->St,  sciara->substates->St_next,  sizeof(double)*sciara->domain->rows*sciara->domain->cols);
 
@@ -420,8 +347,6 @@ int main(int argc, char **argv)
             sciara->substates->St, 
             sciara->substates->St_next, 
             sciara->substates->Sf);
-    //swap_pointers(sciara->substates->Slt_next, sciara->substates->Slt);
-    //swap_pointers(sciara->substates->St_next,  sciara->substates->St);
     memcpy(sciara->substates->Slt, sciara->substates->Slt_next, sizeof(double)*sciara->domain->rows*sciara->domain->cols);
     memcpy(sciara->substates->St,  sciara->substates->St_next,  sizeof(double)*sciara->domain->rows*sciara->domain->cols);
 
@@ -450,9 +375,6 @@ int main(int argc, char **argv)
             sciara->substates->Sf, 
             sciara->substates->Msl, 
             sciara->substates->Mb);
-    //swap_pointers(sciara->substates->Sz_next,  sciara->substates->Sz);
-    //swap_pointers(sciara->substates->Slt_next, sciara->substates->Slt);
-    //swap_pointers(sciara->substates->St_next,  sciara->substates->St);
     memcpy(sciara->substates->Sz,  sciara->substates->Sz_next,  sizeof(double)*sciara->domain->rows*sciara->domain->cols);
     memcpy(sciara->substates->Slt, sciara->substates->Slt_next, sizeof(double)*sciara->domain->rows*sciara->domain->cols);
     memcpy(sciara->substates->St,  sciara->substates->St_next,  sizeof(double)*sciara->domain->rows*sciara->domain->cols);
@@ -478,21 +400,15 @@ int main(int argc, char **argv)
 
 
   // Compute the current amount of lava on the surface
-  total_current_lava = 0.0;
-  total_outflows = 0.0;
+  double total_current_lava = 0.0;
   for (int i = 0; i < sciara->domain->rows; i++)
     for (int j = 0; j < sciara->domain->cols; j++)
-    {
       total_current_lava += GET(sciara->substates->Slt,sciara->domain->cols,i,j) + GET(sciara->substates->Msl,sciara->domain->cols,i,j);
-      for (int n = 0; n < NUMBER_OF_OUTFLOWS; n++)
-        total_outflows += BUF_GET(sciara->substates->Sf,sciara->domain->rows,sciara->domain->cols,n,i,j);
-    }
 
   double cl_time = static_cast<double>(cl_timer.getTimeMilliseconds()) / 1000.0;
   printf("Elapsed time: %lf [s]\n", cl_time);
   printf("Emitted lava: %lf [m]\n", sciara->simulation->total_emitted_lava);
   printf("Current lava: %lf [m]\n", total_current_lava);
-  printf("Current outf: %lf [m]\n", total_outflows);
 
   printf("Saving output to %s...\n", argv[OUTPUT_PATH_ID]);
   saveConfiguration(argv[OUTPUT_PATH_ID], sciara);

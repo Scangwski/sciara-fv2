@@ -22,7 +22,7 @@ typedef struct
 // The adopted von Neuman neighborhood // Format: flow_index:cell_label:(row_index,col_index)
 //
 //   cell_label in [0,1,2,3,4,5,6,7,8]: label assigned to each cell in the neighborhood
-//   flow_index in   [0,1,2,3,4,5,6,7]: outgoing flow indices in Sf from cell 0 to the others
+//   flow_index in   [0,1,2,3,4,5,6,7]: outgoing flow indices in Mf from cell 0 to the others
 //       (row_index,col_index): 2D relative indices of the cells
 //
 //
@@ -43,14 +43,14 @@ typedef struct
 {
 	double* Sz;		    //Altitude
   double* Sz_next;
-	double* Slt;	    //Lava thickness
-  double* Slt_next;
-	double* St;		    //Lava temperature
-  double* St_next;
-	double* Sf;		    //Flows Substates
+	double* Sh;	      //Lava thickness
+  double* Sh_next;
+	double* ST;		    //Lava temperature
+  double* ST_next;
+	double* Mf;		    //Matrix of the ouflows
 	int*    Mv;		    //Matrix of the vents
-	bool*   Mb;		    //Matrix of the topography bound
-	double* Msl;	    //Matrix of the solidified lava
+	bool*   Mb;		    //Matrix of the domain boundaries
+	double* Mhs;	    //Matrix of the solidified lava
 } Substates;
 
 typedef struct

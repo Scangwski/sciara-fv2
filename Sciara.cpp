@@ -5,28 +5,28 @@ void allocateSubstates(Sciara *sciara)
 {
 	sciara->substates->Sz       = new (std::nothrow) double[sciara->domain->rows*sciara->domain->cols];
   sciara->substates->Sz_next  = new (std::nothrow) double[sciara->domain->rows*sciara->domain->cols];
-	sciara->substates->Slt      = new (std::nothrow) double[sciara->domain->rows*sciara->domain->cols];
-  sciara->substates->Slt_next = new (std::nothrow) double[sciara->domain->rows*sciara->domain->cols];
-	sciara->substates->St       = new (std::nothrow) double[sciara->domain->rows*sciara->domain->cols];
-  sciara->substates->St_next  = new (std::nothrow) double[sciara->domain->rows*sciara->domain->cols];
-	sciara->substates->Sf       = new (std::nothrow) double[sciara->domain->rows*sciara->domain->cols*NUMBER_OF_OUTFLOWS];
+	sciara->substates->Sh       = new (std::nothrow) double[sciara->domain->rows*sciara->domain->cols];
+  sciara->substates->Sh_next  = new (std::nothrow) double[sciara->domain->rows*sciara->domain->cols];
+	sciara->substates->ST       = new (std::nothrow) double[sciara->domain->rows*sciara->domain->cols];
+  sciara->substates->ST_next  = new (std::nothrow) double[sciara->domain->rows*sciara->domain->cols];
+	sciara->substates->Mf       = new (std::nothrow) double[sciara->domain->rows*sciara->domain->cols*NUMBER_OF_OUTFLOWS];
 //sciara->substates->Mv       = new (std::nothrow)    int[sciara->domain->rows*sciara->domain->cols];
 	sciara->substates->Mb       = new (std::nothrow)   bool[sciara->domain->rows*sciara->domain->cols];
-	sciara->substates->Msl      = new (std::nothrow) double[sciara->domain->rows*sciara->domain->cols];
+	sciara->substates->Mhs      = new (std::nothrow) double[sciara->domain->rows*sciara->domain->cols];
 }
 
 void deallocateSubstates(Sciara *sciara)
 {
 	if(sciara->substates->Sz)       delete[] sciara->substates->Sz;
   if(sciara->substates->Sz_next)  delete[] sciara->substates->Sz_next;
-	if(sciara->substates->Slt)      delete[] sciara->substates->Slt;
-  if(sciara->substates->Slt_next) delete[] sciara->substates->Slt_next;
-	if(sciara->substates->St)       delete[] sciara->substates->St;
-  if(sciara->substates->St_next)  delete[] sciara->substates->St_next;
-	if(sciara->substates->Sf)       delete[] sciara->substates->Sf;
+	if(sciara->substates->Sh)       delete[] sciara->substates->Sh;
+  if(sciara->substates->Sh_next)  delete[] sciara->substates->Sh_next;
+	if(sciara->substates->ST)       delete[] sciara->substates->ST;
+  if(sciara->substates->ST_next)  delete[] sciara->substates->ST_next;
+	if(sciara->substates->Mf)       delete[] sciara->substates->Mf;
 //if(sciara->substates->Mv)       delete[] sciara->substates->Mv;
 	if(sciara->substates->Mb)       delete[] sciara->substates->Mb;
-	if(sciara->substates->Msl)      delete[] sciara->substates->Msl;
+	if(sciara->substates->Mhs)      delete[] sciara->substates->Mhs;
 }
 
 

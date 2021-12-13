@@ -321,15 +321,15 @@ int loadConfiguration(char const *path, Sciara* sciara)
 
   //apre il file Thickness
   ConfigurationFilePath((char*)path, "Thickness", ".stt", configuration_path);
-  loadAlreadyAllocatedMap(configuration_path, sciara->substates->Slt, sciara->substates->Slt_next, sciara->domain->cols, sciara->domain->rows);
+  loadAlreadyAllocatedMap(configuration_path, sciara->substates->Sh, sciara->substates->Sh_next, sciara->domain->cols, sciara->domain->rows);
 
   //apre il file Temperature
   ConfigurationFilePath((char*)path, "Temperature", ".stt", configuration_path);
-  loadAlreadyAllocatedMap(configuration_path, sciara->substates->St, sciara->substates->St_next, sciara->domain->cols, sciara->domain->rows);
+  loadAlreadyAllocatedMap(configuration_path, sciara->substates->ST, sciara->substates->ST_next, sciara->domain->cols, sciara->domain->rows);
 
   //apre il file SolidifiedLavaThickness
   ConfigurationFilePath((char*)path, "SolidifiedLavaThickness", ".stt", configuration_path);
-  loadAlreadyAllocatedMap(configuration_path, sciara->substates->Msl, NULL, sciara->domain->cols, sciara->domain->rows);
+  loadAlreadyAllocatedMap(configuration_path, sciara->substates->Mhs, NULL, sciara->domain->cols, sciara->domain->rows);
 
   //Imposta lo step in base al nome del file .cfg e aggiorna la barra di stato
   sciara->simulation->step = GetStepFromConfigurationFile((char*)path);
@@ -371,15 +371,15 @@ int saveConfiguration(char const *path, Sciara* sciara)
 
   //apre il file Thickness
   ConfigurationFileSavingPath((char*)path, sciara->simulation->step, "Thickness", ".stt", s);
-  saveMatrixr(sciara->substates->Slt,s,sciara);
+  saveMatrixr(sciara->substates->Sh,s,sciara);
 
   //apre il file Temperature
   ConfigurationFileSavingPath((char*)path, sciara->simulation->step, "Temperature", ".stt", s);
-  saveMatrixr(sciara->substates->St,s,sciara);
+  saveMatrixr(sciara->substates->ST,s,sciara);
 
   //apre il file SolidifiedLavaThickness
   ConfigurationFileSavingPath((char*)path, sciara->simulation->step, "SolidifiedLavaThickness", ".stt", s);
-  saveMatrixr(sciara->substates->Msl,s,sciara);
+  saveMatrixr(sciara->substates->Mhs,s,sciara);
 
   return FILE_OK;
 }

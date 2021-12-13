@@ -15,9 +15,11 @@
 // I/O parameters used to index argv[]
 // ----------------------------------------------------------------------------
 
-#define INPUT_PATH_ID  1
-#define OUTPUT_PATH_ID 2
-#define MAX_STEPS_ID   3
+#define INPUT_PATH_ID          1
+#define OUTPUT_PATH_ID         2
+#define MAX_STEPS_ID           3
+#define REDUCE_INTERVL_ID      4
+#define THICKNESS_THRESHOLD_ID 5
 
 // ----------------------------------------------------------------------------
 // Read/Write access macros linearizing single/multy layer buffer 2D indices
@@ -28,9 +30,6 @@
 #define BUF_SET(M, rows, columns, n, i, j, value) ( (M)[( ((n)*(rows)*(columns)) + ((i)*(columns)) + (j) )] = (value) )
 #define BUF_GET(M, rows, columns, n, i, j) ( M[( ((n)*(rows)*(columns)) + ((i)*(columns)) + (j) )] )
 
-// ----------------------------------------------------------------------------
-// init kernel, called once before the simulation loop
-// ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
 // computing kernels, aka elementary processes in the XCA terminology
 // ----------------------------------------------------------------------------
@@ -62,12 +61,6 @@ void emitLava(
 }
 
 
-double powerLaw(double k1, double k2, double T)
-{
-  double log_value = k1 + k2 * T;
-  return pow(10, log_value);
-}
-
 void computeOutflows (
     int i, 
     int j, 
@@ -95,26 +88,23 @@ void computeOutflows (
   double f[MOORE_NEIGHBORS];
   bool loop;
   int counter;
-  double sz0, sz, t, avg, _Pr, hc;
+  double sz0, sz, T, avg, rr, hc;
 
 
   if (GET(Slt,c,i,j) <=0)
     return;
 
-
-  t = GET(St, c, i, j);
-  _Pr = powerLaw(_a, _b, t);
-  hc = powerLaw(_c, _d, t);
+  T  = GET(St, c, i, j);
+  rr = pow(10, _a+_b*T);
+  hc = pow(10, _c+_d*T);
 
   for (int k = 0; k < MOORE_NEIGHBORS; k++)
   {
-    sz0      = GET(Sz, c, i, j);
-    sz       = GET(Sz, c, i+Xi[k], j+Xj[k]);
+    sz0      = GET(Sz,  c, i,       j      );
+    sz       = GET(Sz,  c, i+Xi[k], j+Xj[k]);
     h[k]     = GET(Slt, c, i+Xi[k], j+Xj[k]);
-    H[k]     = 0;
-    theta[k] = 0;
     w[k]     = Pc;
-    Pr[k]    = _Pr;
+    Pr[k]    = rr;
 
     if (k < VON_NEUMANN_NEIGHBORS)
       z[k] = sz;
@@ -123,8 +113,8 @@ void computeOutflows (
   }
 
   H[0] = z[0];
+  theta[0] = 0;
   eliminated[0] = false;
-
   for (int k = 1; k < MOORE_NEIGHBORS; k++)
     if (z[0] + h[0] > z[k] + h[k])
     {
@@ -133,21 +123,27 @@ void computeOutflows (
       eliminated[k] = false;
     } 
     else
+    {
+      //H[k] = 0;
+      //theta[k] = 0;
       eliminated[k] = true;
+    }
 
   do {
     loop = false;
     avg = h[0];
     counter = 0;
     for (int k = 0; k < MOORE_NEIGHBORS; k++)
-      if (!eliminated[k]) {
+      if (!eliminated[k])
+      {
         avg += H[k];
         counter++;
       }
     if (counter != 0)
       avg = avg / double(counter);
     for (int k = 0; k < MOORE_NEIGHBORS; k++)
-      if (!eliminated[k] && avg <= H[k]) {
+      if (!eliminated[k] && avg <= H[k])
+      {
         eliminated[k] = true;
         loop = true;
       }
@@ -155,7 +151,6 @@ void computeOutflows (
 
   for (int k = 1; k < MOORE_NEIGHBORS; k++) 
     if (!eliminated[k] && h[0] > hc * cos(theta[k]))
-      //f[k] = Pr[k] * (avg - H[k]);
       BUF_SET(Sf,r,c,k-1,i,j, Pr[k]*(avg - H[k]));
     else
       BUF_SET(Sf,r,c,k-1,i,j,0.0);
@@ -199,24 +194,6 @@ void massBalance(
     t_next /= h_next;
     SET(St_next,c,i,j,t_next);
     SET(Slt_next,c,i,j,h_next);
-  }
-}
-
-void boundaryConditions (int i, int j, 
-            int r, 
-            int c, 
-            double* Sf,
-            bool*   Mb,
-            double* Slt,
-            double* Slt_next,
-            double* St,
-            double* St_next)
-{
-  return;
-  if (GET(Mb,c,i,j))
-  {
-    SET(Slt_next,c,i,j,0.0);
-    SET(St_next, c,i,j,0.0);
   }
 }
 
@@ -266,6 +243,33 @@ void computeNewTemperatureAndSolidification(
   }
 }
 
+void boundaryConditions (int i, int j, 
+    int r, 
+    int c, 
+    double* Sf,
+    bool*   Mb,
+    double* Slt,
+    double* Slt_next,
+    double* St,
+    double* St_next)
+{
+  return;
+  if (GET(Mb,c,i,j))
+  {
+    SET(Slt_next,c,i,j,0.0);
+    SET(St_next, c,i,j,0.0);
+  }
+}
+
+double reduceAdd(int r, int c, double* buffer)
+{
+  double sum = 0.0;
+  for (int i = 0; i < r; i++)
+    for (int j = 0; j < c; j++)
+      sum += GET(buffer,c,i,j);
+
+  return sum;
+}
 
 // ----------------------------------------------------------------------------
 // Function main()
@@ -283,10 +287,19 @@ int main(int argc, char **argv)
   int i_start = 0, i_end = sciara->domain->rows;        // [i_start,i_end[: kernels application range along the rows
   int j_start = 0, j_end = sciara->domain->cols;        // [j_start,j_end[: kernels application range along the cols
 
+
   // simulation initialization and loop
+  double total_current_lava = -1;
   simulationInitialize(sciara);
+
   util::Timer cl_timer;
-  while ( (max_steps > 0 && sciara->simulation->step < max_steps)  &&  (sciara->simulation->elapsed_time <= sciara->simulation->effusion_duration) )
+
+  int reduceInterval = atoi(argv[REDUCE_INTERVL_ID]);
+  double thickness_threshold = atof(argv[THICKNESS_THRESHOLD_ID]);
+  while (    (max_steps > 0 && sciara->simulation->step < max_steps) 
+          || (sciara->simulation->elapsed_time <= sciara->simulation->effusion_duration)
+          || (total_current_lava == -1 ||  total_current_lava > thickness_threshold) 
+        )
   {
     sciara->simulation->elapsed_time += sciara->parameters->Pclock;
     sciara->simulation->step++;
@@ -396,19 +409,15 @@ int main(int argc, char **argv)
     memcpy(sciara->substates->Slt, sciara->substates->Slt_next, sizeof(double)*sciara->domain->rows*sciara->domain->cols);
     memcpy(sciara->substates->St,  sciara->substates->St_next,  sizeof(double)*sciara->domain->rows*sciara->domain->cols);
 
+    // Global reduction
+    if (sciara->simulation->step % reduceInterval == 0)
+      total_current_lava = reduceAdd(sciara->domain->rows, sciara->domain->cols, sciara->substates->Slt);
   }
 
-
-  // Compute the current amount of lava on the surface
-  double total_current_lava = 0.0;
-  for (int i = 0; i < sciara->domain->rows; i++)
-    for (int j = 0; j < sciara->domain->cols; j++)
-      total_current_lava += GET(sciara->substates->Slt,sciara->domain->cols,i,j) + GET(sciara->substates->Msl,sciara->domain->cols,i,j);
-
   double cl_time = static_cast<double>(cl_timer.getTimeMilliseconds()) / 1000.0;
-  printf("Elapsed time: %lf [s]\n", cl_time);
-  printf("Emitted lava: %lf [m]\n", sciara->simulation->total_emitted_lava);
-  printf("Current lava: %lf [m]\n", total_current_lava);
+  printf("Step %d - Elapsed time [s]: %lf\n", sciara->simulation->step, cl_time);
+  printf("Emitted lava [m]: %lf\n;", sciara->simulation->total_emitted_lava);
+  printf("Step %d - Current lava [m]: %lf\n", total_current_lava);
 
   printf("Saving output to %s...\n", argv[OUTPUT_PATH_ID]);
   saveConfiguration(argv[OUTPUT_PATH_ID], sciara);
@@ -418,19 +427,3 @@ int main(int argc, char **argv)
 
   return 0;
 }
-
-//============================================================================
-
-// void steering() {
-//   for (int i = 0; i < NUMBER_OF_OUTFLOWS; ++i)
-//     calInitSubstate2Dr(model, sciara->substates->f[i], 0);
-// 
-//   for (int i = 0; i < sciara->domain->rows; i++)
-//     for (int j = 0; j < sciara->domain->cols; j++)
-//       if (calGet2Db(model, sciara->substates->Mb, i, j) == true) {
-//         calSet2Dr(model, sciara->substates->Slt, i, j, 0);
-//         calSet2Dr(model, sciara->substates->St, i, j, 0);
-//       }
-//   sciara->elapsed_time += sciara->Pclock;
-//   //	updateVentsEmission(model);
-// }

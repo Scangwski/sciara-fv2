@@ -1,33 +1,46 @@
 #include "Sciara.h"
 #include "cal2DBuffer.h"
 
+#include <cuda_runtime.h>
+
 void allocateSubstates(Sciara *sciara)
 {
-	sciara->substates->Sz       = new (std::nothrow) double[sciara->domain->rows*sciara->domain->cols];
-  sciara->substates->Sz_next  = new (std::nothrow) double[sciara->domain->rows*sciara->domain->cols];
-	sciara->substates->Sh       = new (std::nothrow) double[sciara->domain->rows*sciara->domain->cols];
-  sciara->substates->Sh_next  = new (std::nothrow) double[sciara->domain->rows*sciara->domain->cols];
-	sciara->substates->ST       = new (std::nothrow) double[sciara->domain->rows*sciara->domain->cols];
-  sciara->substates->ST_next  = new (std::nothrow) double[sciara->domain->rows*sciara->domain->cols];
-	sciara->substates->Mf       = new (std::nothrow) double[sciara->domain->rows*sciara->domain->cols*NUMBER_OF_OUTFLOWS];
-//sciara->substates->Mv       = new (std::nothrow)    int[sciara->domain->rows*sciara->domain->cols];
-	sciara->substates->Mb       = new (std::nothrow)   bool[sciara->domain->rows*sciara->domain->cols];
-	sciara->substates->Mhs      = new (std::nothrow) double[sciara->domain->rows*sciara->domain->cols];
+    int cells = sciara->domain->rows * sciara->domain->cols;
+    int flows = cells * NUMBER_OF_OUTFLOWS;
+
+    cudaMallocManaged(&sciara->substates->Sz,      sizeof(double)*cells);
+    cudaMallocManaged(&sciara->substates->Sz_next, sizeof(double)*cells);
+
+    cudaMallocManaged(&sciara->substates->Sh,      sizeof(double)*cells);
+    cudaMallocManaged(&sciara->substates->Sh_next, sizeof(double)*cells);
+
+    cudaMallocManaged(&sciara->substates->ST,      sizeof(double)*cells);
+    cudaMallocManaged(&sciara->substates->ST_next, sizeof(double)*cells);
+
+    cudaMallocManaged(&sciara->substates->Mf,      sizeof(double)*flows);
+
+    cudaMallocManaged(&sciara->substates->Mb,      sizeof(bool)*cells);
+    cudaMallocManaged(&sciara->substates->Mhs,     sizeof(double)*cells);
 }
+
 
 void deallocateSubstates(Sciara *sciara)
 {
-	if(sciara->substates->Sz)       delete[] sciara->substates->Sz;
-  if(sciara->substates->Sz_next)  delete[] sciara->substates->Sz_next;
-	if(sciara->substates->Sh)       delete[] sciara->substates->Sh;
-  if(sciara->substates->Sh_next)  delete[] sciara->substates->Sh_next;
-	if(sciara->substates->ST)       delete[] sciara->substates->ST;
-  if(sciara->substates->ST_next)  delete[] sciara->substates->ST_next;
-	if(sciara->substates->Mf)       delete[] sciara->substates->Mf;
-//if(sciara->substates->Mv)       delete[] sciara->substates->Mv;
-	if(sciara->substates->Mb)       delete[] sciara->substates->Mb;
-	if(sciara->substates->Mhs)      delete[] sciara->substates->Mhs;
+    cudaFree(sciara->substates->Sz);
+    cudaFree(sciara->substates->Sz_next);
+
+    cudaFree(sciara->substates->Sh);
+    cudaFree(sciara->substates->Sh_next);
+
+    cudaFree(sciara->substates->ST);
+    cudaFree(sciara->substates->ST_next);
+
+    cudaFree(sciara->substates->Mf);
+
+    cudaFree(sciara->substates->Mb);
+    cudaFree(sciara->substates->Mhs);
 }
+
 
 void evaluatePowerLawParams(double PTvent, double PTsol, double value_sol, double value_vent, double &k1, double &k2)
 {

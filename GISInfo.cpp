@@ -10,7 +10,7 @@ const char yllcorner_str[]      = "yllcorner";
 const char cell_size_str[]      = "cellsize";
 const char NODATA_value_str[]   = "NODATA_value";
 
-int LeggiGISInfo(TGISInfo &gis_info, FILE* f)
+int readGISInfo(TGISInfo &gis_info, FILE* f)
 {
   char str[255];
   int cont = -1;
@@ -35,7 +35,7 @@ int LeggiGISInfo(TGISInfo &gis_info, FILE* f)
   fscanf(f,"%s",str); if (strcmp(str, NODATA_value_str)) return GIS_FILE_GENERIC_ERROR;
   fscanf(f,"%s",str); gis_info.NODATA_value = atof(str);
 
-  //verifica se il numero di elementi � consistente rispetto a ncols e nrows
+  // verify whether the number of elements is consistent with ncols and nrows
   fgetpos (f, &position);
   while (!feof(f))
   {
@@ -49,7 +49,7 @@ int LeggiGISInfo(TGISInfo &gis_info, FILE* f)
   return GIS_FILE_OK;
 }
 //---------------------------------------------------------------------------
-int VerificaGISInfo(TGISInfo gis_info, TGISInfo gis_info_morfologia)
+int checkGISInfo(TGISInfo gis_info, TGISInfo gis_info_morfologia)
 {
   if (gis_info.ncols != gis_info_morfologia.ncols) return GIS_FILE_DIMENSION_ERROR;
   if (gis_info.nrows != gis_info_morfologia.nrows) return GIS_FILE_DIMENSION_ERROR;
@@ -60,7 +60,7 @@ int VerificaGISInfo(TGISInfo gis_info, TGISInfo gis_info_morfologia)
   return GIS_FILE_OK;
 }
 //---------------------------------------------------------------------------
-int SalvaGISInfo(const TGISInfo &gis_info, FILE* f)
+int saveGISInfo(const TGISInfo &gis_info, FILE* f)
 {
   char str[255];
 

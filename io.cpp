@@ -9,7 +9,7 @@
 #define FILE_OK		1
 //---------------------------------------------------------------------------
 // Autosave state variables
-bool storing = false;                 //se è true avviene il salvataggio automatico
+bool storing = false;                 // if true, automatic saving is enabled
 TGISInfo gis_info_Sz;
 TGISInfo gis_info_generic;
 TGISInfo gis_info_nodata0;
@@ -21,13 +21,13 @@ TGISInfo gis_info_nodata0;
 
 void saveMatrixr(double * M, char configuration_path[1024],Sciara * sciara){
   FILE* input_file = fopen(configuration_path,"w");
-  SalvaGISInfo(gis_info_Sz,input_file);
+  saveGISInfo(gis_info_Sz,input_file);
   calfSaveMatrix2Dr(M,sciara->domain->rows,sciara->domain->cols,input_file);
   fclose(input_file);
 }
 void saveMatrixi(int * M, char configuration_path[1024],Sciara * sciara){
   FILE* input_file = fopen(configuration_path,"w");
-  SalvaGISInfo(gis_info_Sz,input_file);
+  saveGISInfo(gis_info_Sz,input_file);
   calfSaveMatrix2Di(M,sciara->domain->rows,sciara->domain->cols,input_file);
   fclose(input_file);
 }
@@ -39,7 +39,7 @@ int SaveConfigurationEmission(Sciara* sciara, char const *path, char const *name
     return FILE_ERROR;
   else
   {
-    //Salvataggio su file
+    // Save to file
     FILE *s_file;
     if ( ( s_file = fopen(s,"w") ) == NULL)
     {
@@ -171,7 +171,7 @@ int loadMorphology(char* path, Sciara* sciara)
   if ((input_file = fopen(path, "r")) == NULL)
     return FILE_ERROR;
 
-  int gis_info_status = LeggiGISInfo(gis_info_Sz, input_file);
+  int gis_info_status = readGISInfo(gis_info_Sz, input_file);
   if (gis_info_status != GIS_FILE_OK) {
     fclose(input_file);
     return FILE_ERROR;
@@ -189,7 +189,7 @@ int loadMorphology(char* path, Sciara* sciara)
   // state variables allocation
   allocateSubstates(sciara);
 
-  //legge il file contenente la morfologia
+  // read the file containing the morphology
   calfLoadMatrix2Dr(sciara->substates->Sz, sciara->domain->rows, sciara->domain->cols, input_file);
   calCopyBuffer2Dr(sciara->substates->Sz, sciara->substates->Sz_next, sciara->domain->rows, sciara->domain->cols);
 
@@ -204,19 +204,19 @@ int loadVents(char* path, Sciara* sciara)
   if ((input_file = fopen(path,"r")) == NULL)
     return FILE_ERROR;
 
-  int gis_info_status = LeggiGISInfo(gis_info_generic, input_file);
-  int gis_info_verify = VerificaGISInfo(gis_info_generic, gis_info_Sz);
+  int gis_info_status = readGISInfo(gis_info_generic, input_file);
+  int gis_info_verify = checkGISInfo(gis_info_generic, gis_info_Sz);
   if (gis_info_status != GIS_FILE_OK || gis_info_verify != GIS_FILE_OK) {
     fclose(input_file);
     return FILE_ERROR;
   }
 
-  //Alloca e legge
+  // Allocate and read
 	sciara->substates->Mv = calAllocBuffer2Di(sciara->domain->rows,sciara->domain->cols);
   calfLoadMatrix2Di(sciara->substates->Mv, sciara->domain->rows, sciara->domain->cols, input_file);
   fclose(input_file);
 
-  //verifica della consistenza della matrice
+  // verify the consistency of the matrix
   initVents(sciara->substates->Mv, sciara->domain->cols, sciara->domain->rows, sciara->simulation->vent);
 
   calDeleteBuffer2Di(sciara->substates->Mv);
@@ -233,7 +233,7 @@ int loadEmissionRate(char *path, Sciara* sciara)
   int emission_rate_file_status = loadEmissionRates(input_file, sciara->simulation->emission_time, sciara->simulation->emission_rate, sciara->simulation->vent);
   fclose(input_file);
 
-  //verifica della consistenza del file e definisce il vettore vent
+  // verify the consistency of the file and define the vent vector
   int error = defineVents(sciara->simulation->emission_rate, sciara->simulation->vent);
   if (error || emission_rate_file_status != EMISSION_RATE_FILE_OK)
     return FILE_ERROR;
@@ -255,8 +255,8 @@ int loadAlreadyAllocatedMap(char *path, int* S, int* nS, int lx, int ly) {
   if ((input_file = fopen(path, "r")) == NULL)
     return FILE_ERROR;
 
-  int gis_info_status = LeggiGISInfo(gis_info_generic, input_file);
-  int gis_info_verify = VerificaGISInfo(gis_info_generic, gis_info_Sz);
+  int gis_info_status = readGISInfo(gis_info_generic, input_file);
+  int gis_info_verify = checkGISInfo(gis_info_generic, gis_info_Sz);
   if (gis_info_status != GIS_FILE_OK || gis_info_verify != GIS_FILE_OK) {
     fclose(input_file);
     return FILE_ERROR;
@@ -275,8 +275,8 @@ int loadAlreadyAllocatedMap(char *path, double* S, double* nS, int lx, int ly) {
   if ((input_file = fopen(path, "r")) == NULL)
     return FILE_ERROR;
 
-  int gis_info_status = LeggiGISInfo(gis_info_generic, input_file);
-  int gis_info_verify = VerificaGISInfo(gis_info_generic, gis_info_Sz);
+  int gis_info_status = readGISInfo(gis_info_generic, input_file);
+  int gis_info_verify = checkGISInfo(gis_info_generic, gis_info_Sz);
   if (gis_info_status != GIS_FILE_OK || gis_info_verify != GIS_FILE_OK) {
     fclose(input_file);
     return FILE_ERROR;
@@ -296,7 +296,7 @@ int loadConfiguration(char const *path, Sciara* sciara)
   //    int   gis_info_status;
   //    int   gis_info_verify;
 
-  //Apre il file di configurazione
+  // Open the configuration file
   if (!loadParameters(path, sciara)) 
   {
     strcat((char*)path, "_000000000000.cfg");
@@ -304,34 +304,34 @@ int loadConfiguration(char const *path, Sciara* sciara)
       return FILE_ERROR;
   }
 
-  //apre il file Morphology
-  ConfigurationFilePath((char*)path, "Morphology", ".stt", configuration_path);
+  // open the Morphology file
+  ConfigurationFilePath((char*)path, "Morphology", ".asc", configuration_path);
   if (!loadMorphology(configuration_path, sciara))
     return FILE_ERROR;
 
-  //apre il file Vents
-  ConfigurationFilePath((char*)path, "Vents", ".stt", configuration_path);
+  // open the Vents file
+  ConfigurationFilePath((char*)path, "Vents", ".asc", configuration_path);
   if (!loadVents(configuration_path, sciara))
     return FILE_ERROR;
 
-  //apre il file EmissionRate
+  // open the EmissionRate file
   ConfigurationFilePath((char*)path, "EmissionRate", ".txt", configuration_path);
   if (!loadEmissionRate(configuration_path, sciara))
     return FILE_ERROR;
 
-  //apre il file Thickness
-  ConfigurationFilePath((char*)path, "Thickness", ".stt", configuration_path);
+  // open the Thickness file
+  ConfigurationFilePath((char*)path, "Thickness", ".asc", configuration_path);
   loadAlreadyAllocatedMap(configuration_path, sciara->substates->Sh, sciara->substates->Sh_next, sciara->domain->cols, sciara->domain->rows);
 
-  //apre il file Temperature
-  ConfigurationFilePath((char*)path, "Temperature", ".stt", configuration_path);
+  // open the Temperature file
+  ConfigurationFilePath((char*)path, "Temperature", ".asc", configuration_path);
   loadAlreadyAllocatedMap(configuration_path, sciara->substates->ST, sciara->substates->ST_next, sciara->domain->cols, sciara->domain->rows);
 
-  //apre il file SolidifiedLavaThickness
-  ConfigurationFilePath((char*)path, "SolidifiedLavaThickness", ".stt", configuration_path);
+  // open the SolidifiedLavaThickness file
+  ConfigurationFilePath((char*)path, "SolidifiedLavaThickness", ".asc", configuration_path);
   loadAlreadyAllocatedMap(configuration_path, sciara->substates->Mhs, NULL, sciara->domain->cols, sciara->domain->rows);
 
-  //Imposta lo step in base al nome del file .cfg e aggiorna la barra di stato
+  // Set the step based on the .cfg filename and update the status bar
   sciara->simulation->step = GetStepFromConfigurationFile((char*)path);
 
 
@@ -343,42 +343,42 @@ int saveConfiguration(char const *path, Sciara* sciara)
   //    int   gis_info_status;
   //    int   gis_info_verify;
 
-  //Apre il file di configurazione
+  // Open the configuration file
   bool path_ok;
   char s[1024];
 
-  //Salva il file di configurazione e i sottostati
+  // Save the configuration file and substates
   path_ok = ConfigurationFileSavingPath((char*)path, sciara->simulation->step, "", ".cfg", s);
 
   if (!path_ok || !saveParameters(s, sciara))
     return FILE_ERROR;
 
 
-  //apre il file Morphology
-  ConfigurationFileSavingPath((char*)path, sciara->simulation->step, "Morphology", ".stt", s);
+  // open the Morphology file
+  ConfigurationFileSavingPath((char*)path, sciara->simulation->step, "Morphology", ".asc", s);
   saveMatrixr(sciara->substates->Sz,s,sciara);
 
-  //apre il file Vents
-  ConfigurationFileSavingPath((char*)path, sciara->simulation->step, "Vents", ".stt", s);
+  // open the Vents file
+  ConfigurationFileSavingPath((char*)path, sciara->simulation->step, "Vents", ".asc", s);
   sciara->substates->Mv = calAllocBuffer2Di(sciara->domain->rows,sciara->domain->cols);
   rebuildVentsMatrix(sciara->substates->Mv,sciara->domain->cols,sciara->domain->rows,sciara->simulation->vent);
   saveMatrixi(sciara->substates->Mv,s,sciara);
   calDeleteBuffer2Di(sciara->substates->Mv);
 
-  //apre il file EmissionRate
+  // open the EmissionRate file
   if (!SaveConfigurationEmission(sciara, (char*)path, "EmissionRate"))
     return FILE_ERROR;
 
-  //apre il file Thickness
-  ConfigurationFileSavingPath((char*)path, sciara->simulation->step, "Thickness", ".stt", s);
+  // open the Thickness file
+  ConfigurationFileSavingPath((char*)path, sciara->simulation->step, "Thickness", ".asc", s);
   saveMatrixr(sciara->substates->Sh,s,sciara);
 
-  //apre il file Temperature
-  ConfigurationFileSavingPath((char*)path, sciara->simulation->step, "Temperature", ".stt", s);
+  // open the Temperature file
+  ConfigurationFileSavingPath((char*)path, sciara->simulation->step, "Temperature", ".asc", s);
   saveMatrixr(sciara->substates->ST,s,sciara);
 
-  //apre il file SolidifiedLavaThickness
-  ConfigurationFileSavingPath((char*)path, sciara->simulation->step, "SolidifiedLavaThickness", ".stt", s);
+  // open the SolidifiedLavaThickness file
+  ConfigurationFileSavingPath((char*)path, sciara->simulation->step, "SolidifiedLavaThickness", ".asc", s);
   saveMatrixr(sciara->substates->Mhs,s,sciara);
 
   return FILE_OK;

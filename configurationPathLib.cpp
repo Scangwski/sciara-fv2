@@ -47,20 +47,20 @@ void ConfigurationIdPath(char config_file_path[], char config_id_str[])
 
 void ConfigurationFilePath(char config_file_path[], char const * name, char const *suffix, char file_path[])
 {
-  /*
-     La funzione costruisce in file_path il percorso completo del filada aprire:
-     config_file_path � il percorso completo del file di configurazione. Es: curti_000000000000.cfg
-     name � il nome del sottostato da aprire. Es: Morphology
-     suffix � l'estensione del file da aprire. Es: .stt oppure .txt
+    /*
+      Builds the full file path in `file_path` for the file to open:
+      `config_file_path` is the full path of the configuration file. e.g.: curti_000000000000.cfg
+      `name` is the name of the substate to open. e.g.: Morphology
+      `suffix` is the file extension to open. e.g.: .asc
 
-*/
-  strcpy(file_path, "\0");            //inizializza file_path alla stringa vuota
-  strcat(file_path, config_file_path);//file_path viene inizializzato al percorso completo del file di configurazione
-  int lp = strlen(file_path)-4;       //lunghezza della stringa senza estensione .cfg
-  file_path[lp] = '\0';               //file_path = file_path senza estensione .cfg
-  strcat(file_path, "_");             //file_path = file_path + _ . Es: curti_000000000000_
-  strcat(file_path, name);            //file_path = file_path + name . Es: curti_000000000000_Morphology
-  strcat(file_path, suffix);          //file_path = file_path + .stt . Es: curti_000000000000_Morphology.stt
+    */
+    strcpy(file_path, "\0");            // initialize file_path to the empty string
+    strcat(file_path, config_file_path); // file_path is initialized to the full configuration file path
+    int lp = strlen(file_path)-4;       // length of the string without the .cfg extension
+    file_path[lp] = '\0';               // file_path = file_path without the .cfg extension
+    strcat(file_path, "_");             // file_path = file_path + '_' e.g.: curti_000000000000_
+    strcat(file_path, name);            // file_path = file_path + name e.g.: curti_000000000000_Morphology
+    strcat(file_path, suffix);          // file_path = file_path + .asc e.g.: curti_000000000000_Morphology.asc
 }
 //---------------------------------------------------------------------------
 int GetStepFromConfigurationFile(char config_file_path[])
@@ -77,30 +77,30 @@ int GetStepFromConfigurationFile(char config_file_path[])
 //---------------------------------------------------------------------------
 bool ConfigurationFileSavingPath(char config_file_path[], int step, char const * name, char const * suffix, char file_path[])
 {
-  char p[32];                         //stringa contenete il passo di calcolo (step)
-  char ps[] = "000000000000";         //stringa di 12 digts contenete il passo di calcolo (step)
+  char p[32];                         // string containing the step
+  char ps[] = "000000000000";         // 12-digit string to contain the calculation step (step)
 
-  strcpy(file_path, "\0");            //inizializza file_path alla stringa vuota
-  strcat(file_path, config_file_path);//file_path viene inizializzato al percorso del file di configurazione. Es: "c:\\simulazioni\\curti"
+  strcpy(file_path, "\0");            // initialize file_path to the empty string
+  strcat(file_path, config_file_path); // file_path is initialized to the configuration file path. e.g.: "c:\\simulazioni\\curti"
   if (step >= 0) {
-    strcat(file_path, "_");           //file_path = file_path+ "_". Es: "c:\\simulazioni\\curti_"
-    sprintf(p, "%d", step);			      //conversione in stringa dello step dell'AC. Es: p = "345"
-    int lp = strlen (p);              //calcolo lunghezza della stringha p
-    int lps = strlen (ps);            //calcolo lunghezza della stringha ps
-    if (lps < lp)                     //controllo
+    strcat(file_path, "_");           // file_path = file_path + "_". e.g.: "c:\\simulazioni\\curti_"
+    sprintf(p, "%d", step);		      // convert AC step to string. e.g.: p = "345"
+    int lp = strlen (p);              // compute length of string p
+    int lps = strlen (ps);            // compute length of string ps
+    if (lps < lp)                     // check
       return false;
-    ps[lps-lp] = '\0';                //scarta gli ultimi lp caratteri della stringa ps = "000000000"
-    strcat(ps, p);                    //ps = ps + p. Es. ps = "000000000345"
-    strcat(file_path, ps);            //file_path = file_path + ps. Es: "c:\\simulazioni\\curti_000000000345"
+    ps[lps-lp] = '\0';                // shorten ps so it can contain p
+    strcat(ps, p);                    // ps = ps + p. e.g.: ps = "000000000345"
+    strcat(file_path, ps);            // file_path = file_path + ps. e.g.: "c:\\simulazioni\\curti_000000000345"
 
   }
-  if (strcmp(name, ""))               //se name non � la stringa vuota
+  if (strcmp(name, ""))               // if name is not the empty string
   {
-    strcat(file_path, "_");			      //file_path = file_path + "_". Es: "c:\\simulazioni\\curti_000000000345_"
-    strcat(file_path, name);          //file_path = file_path + name. Es: "c:\\simulazioni\\curti_000000000345_Morphology"
+    strcat(file_path, "_");		        // file_path = file_path + "_". e.g.: "c:\\simulazioni\\curti_000000000345_"
+    strcat(file_path, name);          // file_path = file_path + name. e.g.: "c:\\simulazioni\\curti_000000000345_Morphology"
   }
 
-  strcat(file_path, suffix);          //file_path = file_path + ."stt". Es: "c:\\simulazioni\\curti_000000000345_Morphology.stt"
+  strcat(file_path, suffix);          //file_path = file_path + ."asc". Es: "c:\\simulazioni\\curti_000000000345_Morphology.stt"
 
   return true;
 }

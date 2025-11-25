@@ -19,9 +19,9 @@ struct TGISInfo {
   double NODATA_value;
 };
 
-int LeggiGISInfo(TGISInfo &gis_info, FILE* f);
-int VerificaGISInfo(TGISInfo gis_info, TGISInfo gis_info_morfologia);
-int SalvaGISInfo(const TGISInfo &gis_info, FILE* f);
+int readGISInfo(TGISInfo &gis_info, FILE* f);
+int checkGISInfo(TGISInfo gis_info, TGISInfo gis_info_morfologia);
+int saveGISInfo(const TGISInfo &gis_info, FILE* f);
 void initGISInfoNODATA0(const TGISInfo &gis_info_source, TGISInfo &gis_info_dest);
 
 #endif

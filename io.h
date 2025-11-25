@@ -11,9 +11,9 @@
 
 //---------------------------------------------------------------------------
 // Autosave state variables
-extern bool storing;		    //se è true avviene il salvataggio automatico
-extern int storing_step;    //Ogni storing_step passi salva la configurazione
-extern char storing_path[]; //percorso in cui viene salvata la configurazione
+extern bool storing;		    // if true, automatic saving is enabled
+extern int storing_step;    // every `storing_step` steps the configuration is saved
+extern char storing_path[]; // path where the configuration is saved
 extern struct TGISInfo gis_info_Sz;
 extern struct TGISInfo gis_info_generic;
 extern struct TGISInfo gis_info_nodata0;

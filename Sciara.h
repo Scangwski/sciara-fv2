@@ -55,24 +55,24 @@ typedef struct
 
 typedef struct
 {
-	double Pclock;	//AC clock [s]
-	double Pc;		//cell side
-	double Pac;		//area of the cell
-	double PTsol;	//temperature of solidification
-	double PTvent;	//temperature of lava at vent
+	double Pclock;		//AC clock [s]
+	double Pc;				//cell side
+	double Pac;				//area of the cell
+	double PTsol;			//temperature of solidification
+	double PTvent;		//temperature of lava at vent
 	double Pr_Tsol;
 	double Pr_Tvent;
-	double a;		// parametro per calcolo Pr
-	double b;		// parametro per calcolo Pr
+	double a;				// parameter for computing Pr
+	double b;				// parameter for computing Pr
 	double Phc_Tsol;
 	double Phc_Tvent;
-	double c;		// parametro per calcolo hc
-	double d;		// parametro per calcolo hc
+	double c; 				// parameter for computing hc
+	double d; 				// parameter for computing hc
 	double Pcool;
-	double Prho;	//density
+	double Prho;			//density
 	double Pepsilon;	//emissivity
-	double Psigma;	//Stephen-Boltzamnn constant
-	double Pcv;		//Specific heat
+	double Psigma;		//Stephen-Boltzamnn constant
+	double Pcv;				//Specific heat
 	int algorithm;	
 } Parameters;
 
@@ -80,7 +80,7 @@ typedef struct
 {
   int    step;
 	int    maximum_steps;	//... go for maximum_steps steps (0 for loop)
-	double elapsed_time; //tempo trascorso dall'inizio della simulazione [s]
+	double elapsed_time; // elapsed time since simulation start [s]
 
 	unsigned int emission_time;
 	vector<TEmissionRate> emission_rate;
@@ -88,9 +88,9 @@ typedef struct
 	double effusion_duration;
   double total_emitted_lava;
 
-	double stopping_threshold;	//se negativa non si effettua il controllo sulla pausa
-	int    refreshing_step;	//I thread grafici vengono avviati ogni repaint_step passi
-	double thickness_visual_threshold;	//in LCMorphology viene disegnato nero solo se mMD > visual_threshold
+	double stopping_threshold;	// if negative, no pause control is applied
+	int    refreshing_step;	// graphic threads are started every repaint_step steps
+	double thickness_visual_threshold; 	// in LCMorphology, drawn black only if mMD > visual_threshold
 } Simulation;
 
 
@@ -98,16 +98,12 @@ typedef struct
 {
   Domain *domain;
   NeighsRelativeCoords *X;
-	Substates *substates;
+  Substates *substates;
   Parameters *parameters;
   Simulation *simulation;
-
 } Sciara;
 
-//extern int Xi[];
-//extern int Xj[];
-
-void MakeBorder(Sciara *sciara);
+void makeBorder(Sciara *sciara);
 
 // ----------------------------------------------------------------------------
 // Memory allocation function for 2D linearized buffers

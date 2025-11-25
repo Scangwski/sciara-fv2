@@ -1,3 +1,13 @@
+# Build and object files
+*.o
+*.out
+*.exe
+
+# VSCode project files
+.vscode/
+
+# Backup / temp
+*~
 *.aux.xml
 *.o
 *output*

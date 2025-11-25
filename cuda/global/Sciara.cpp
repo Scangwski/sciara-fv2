@@ -21,7 +21,10 @@ void allocateSubstates(Sciara *sciara)
 
     cudaMallocManaged(&sciara->substates->Mb,      sizeof(bool)*cells);
     cudaMallocManaged(&sciara->substates->Mhs,     sizeof(double)*cells);
-}
+
+    cudaMemset(sciara->substates->Mb,  0, sizeof(bool)   * cells);
+    cudaMemset(sciara->substates->Mhs, 0, sizeof(double) * cells);
+  }
 
 
 void deallocateSubstates(Sciara *sciara)
@@ -93,13 +96,21 @@ void init(Sciara*& sciara)
   sciara->domain = new Domain;
 
   sciara->X = new NeighsRelativeCoords;
-  sciara->X->Xi = new int[MOORE_NEIGHBORS];
-  sciara->X->Xj = new int[MOORE_NEIGHBORS];
-  for (int n=0; n<MOORE_NEIGHBORS; n++)
-  {
-    sciara->X->Xi[n] = _Xi[n];
-    sciara->X->Xj[n] = _Xj[n];
-  }
+
+// Allocate Xi/Xj in Unified Memory (GPU-accessible)
+cudaMallocManaged(&(sciara->X->Xi), sizeof(int) * MOORE_NEIGHBORS);
+cudaMallocManaged(&(sciara->X->Xj), sizeof(int) * MOORE_NEIGHBORS);
+
+// Copy CPU-side Neigh offsets into Unified Memory
+int Xi_cpu[MOORE_NEIGHBORS] = {0, -1,  0,  0,   1, -1,  1,  1, -1};
+int Xj_cpu[MOORE_NEIGHBORS] = {0,  0, -1,  1,   0, -1, -1,  1,  1};
+
+for (int n = 0; n < MOORE_NEIGHBORS; n++)
+{
+    sciara->X->Xi[n] = Xi_cpu[n];
+    sciara->X->Xj[n] = Xj_cpu[n];
+}
+
 
   sciara->substates = new Substates; //Substates allocation is done when the confiugration is loaded
   sciara->parameters = new Parameters;
@@ -108,17 +119,24 @@ void init(Sciara*& sciara)
 
 void finalize(Sciara*& sciara)
 {
-  deallocateSubstates(sciara);
-  delete sciara->domain;
-  delete sciara->X->Xi;
-  delete sciara->X->Xj;
-  delete sciara->X;
-  delete sciara->substates;
-  delete sciara->parameters;
-  delete sciara->simulation;
-  delete sciara;
-  sciara = NULL;
+    // libera tutti i puntatori Unified Memory
+    deallocateSubstates(sciara);
+
+    // Xi e Xj erano allocati con cudaMallocManaged
+    cudaFree(sciara->X->Xi);
+    cudaFree(sciara->X->Xj);
+
+    // oggetti allocati con new
+    delete sciara->X;
+    delete sciara->domain;
+    delete sciara->substates;
+    delete sciara->parameters;
+    delete sciara->simulation;
+
+    delete sciara;
+    sciara = nullptr;
 }
+
 
 void makeBorder(Sciara *sciara) 
 {

@@ -110,18 +110,30 @@ if (i <= 0 || j <= 0 || i >= r-1 || j >= c-1)
   hc = pow(10.0, _c + _d * T);
 
   for (int k = 0; k < MOORE_NEIGHBORS; k++)
-  {
+{
+    int ni = i + Xi[k];
+    int nj = j + Xj[k];
+
+    
+    if (ni < 0 || nj < 0 || ni >= r || nj >= c) {
+        eliminated[k] = true;
+        h[k] = 0.0;
+        z[k] = GET(Sz, c, i, j);
+        continue;
+    }
+
     sz0 = GET(Sz, c, i, j);
-    sz  = GET(Sz, c, i + Xi[k], j + Xj[k]);
-    h[k] = GET(Sh, c, i + Xi[k], j + Xj[k]);
+    sz  = GET(Sz, c, ni, nj);
+    h[k] = GET(Sh, c, ni, nj);
     w[k] = Pc;
     Pr[k] = rr;
 
     if (k < VON_NEUMANN_NEIGHBORS)
-      z[k] = sz;
+        z[k] = sz;
     else
-      z[k] = sz0 - (sz0 - sz) / sqrt(2.0);
-  }
+        z[k] = sz0 - (sz0 - sz) / sqrt(2.0);
+}
+
 
   H[0]       = z[0];
   theta[0]   = 0.0;
@@ -161,10 +173,16 @@ if (i <= 0 || j <= 0 || i >= r-1 || j >= c-1)
   } while (loop);
 
   for (int k = 1; k < MOORE_NEIGHBORS; k++)
-    if (!eliminated[k] && h[0] > hc * cos(theta[k]))
-      BUF_SET(Mf, r, c, k - 1, i, j, Pr[k] * (avg - H[k]));
+{
+    if (eliminated[k])
+        continue;  // NON scrivere in Mf per direzioni invalide
+
+    if (h[0] > hc * cos(theta[k]))
+        BUF_SET(Mf, r, c, k - 1, i, j, Pr[k] * (avg - H[k]));
     else
-      BUF_SET(Mf, r, c, k - 1, i, j, 0.0);
+        BUF_SET(Mf, r, c, k - 1, i, j, 0.0);
+}
+
 }
 
 __global__
@@ -196,8 +214,15 @@ void massBalance_kernel(
 
   for (int n = 1; n < MOORE_NEIGHBORS; n++)
   {
-    neigh_t = GET(ST, c, i + Xi[n], j + Xj[n]);
-    inFlow  = BUF_GET(Mf, r, c, inflowsIndices[n - 1], i + Xi[n], j + Xj[n]);
+    int ni = i + Xi[n];
+int nj = j + Xj[n];
+
+if (ni < 0 || nj < 0 || ni >= r || nj >= c) {
+    continue;  // Nessun flusso in entrata da fuori dominio
+}
+
+    neigh_t = GET(ST, c, ni, nj);
+    inFlow  = BUF_GET(Mf, r, c, inflowsIndices[n - 1], ni, nj);
 
     outFlow = BUF_GET(Mf, r, c, n - 1, i, j);
 
@@ -380,11 +405,18 @@ int main(int argc, char **argv)
   double thickness_threshold = atof(argv[THICKNESS_THRESHOLD_ID]);
 
   while ((max_steps > 0 && sciara->simulation->step < max_steps) ||
-         (sciara->simulation->elapsed_time <= sciara->simulation->effusion_duration) ||
-         (total_current_lava == -1.0 || total_current_lava > thickness_threshold))
-  {
+       (sciara->simulation->elapsed_time <= sciara->simulation->effusion_duration) ||
+       (total_current_lava == -1 || total_current_lava > thickness_threshold))
+{
     sciara->simulation->elapsed_time += sciara->parameters->Pclock;
     sciara->simulation->step++;
+
+    // 👇 AGGIUNGI QUESTO BLOCCO
+    int cells = sciara->domain->rows * sciara->domain->cols;
+
+    cudaMemset(sciara->substates->Sh_next, 0, sizeof(double) * cells);
+    cudaMemset(sciara->substates->ST_next, 0, sizeof(double) * cells);
+    cudaMemset(sciara->substates->Sz_next, 0, sizeof(double) * cells);
 
     // ---------------- emitLava (host) ----------------
     for (int i = i_start; i < i_end; i++)

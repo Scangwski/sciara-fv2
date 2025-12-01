@@ -20,12 +20,14 @@
 // Read/Write access macros linearizing single/multy layer buffer 2D indices
 // ----------------------------------------------------------------------------
 #define SET(M, columns, i, j, value) ((M)[(((i) * (columns)) + (j))] = (value))
-#define GET(M, columns, i, j) (M[(((i) * (columns)) + (j))])
-#define BUF_SET(M, rows, columns, n, i, j, value) ( (M)[( ((n)*(rows)*(columns)) + ((i)*(columns)) + (j) )] = (value) )
-#define BUF_GET(M, rows, columns, n, i, j) ( M[( ((n)*(rows)*(columns)) + ((i)*(columns)) + (j) )] )
+#define GET(M, columns, i, j)        ((M)[(((i) * (columns)) + (j))])
+#define BUF_SET(M, rows, columns, n, i, j, value) \
+    ( (M)[( ((n)*(rows)*(columns)) + ((i)*(columns)) + (j) )] = (value) )
+#define BUF_GET(M, rows, columns, n, i, j) \
+    ( (M)[( ((n)*(rows)*(columns)) + ((i)*(columns)) + (j) )] )
 
 // ----------------------------------------------------------------------------
-// Host utility: simple CUDA error check (optional but useful)
+// Host utility: simple CUDA error check
 // ----------------------------------------------------------------------------
 inline void cudaCheck(cudaError_t err, const char* msg) {
   if (err != cudaSuccess) {
@@ -35,14 +37,14 @@ inline void cudaCheck(cudaError_t err, const char* msg) {
 }
 
 // ----------------------------------------------------------------------------
-// Host emitLava (lasciata su CPU: usa std::vector<TVent>)
+// Host emitLava (rimane su CPU perché usa std::vector<TVent>)
 // ----------------------------------------------------------------------------
 void emitLava(
     int i,
     int j,
     int r,
     int c,
-    vector<TVent> &vent,
+    std::vector<TVent> &vent,
     double elapsed_time,
     double Pclock,
     double emission_time,
@@ -57,7 +59,8 @@ void emitLava(
     if (i == vent[k].y() && j == vent[k].x())
     {
       double thick = vent[k].thickness(elapsed_time, Pclock, emission_time, Pac);
-      SET(Sh_next, c, i, j, GET(Sh, c, i, j) + thick);
+      double cur_h = GET(Sh, c, i, j);
+      SET(Sh_next, c, i, j, cur_h + thick);
       SET(ST_next, c, i, j, PTvent);
       total_emitted_lava += thick;
     }
@@ -80,111 +83,114 @@ void computeOutflows_kernel(
     double _b,
     double _c,
     double _d)
-
-
 {
   int i = blockIdx.y * blockDim.y + threadIdx.y;
-int j = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.x * blockDim.x + threadIdx.x;
 
-if (i <= 0 || j <= 0 || i >= r-1 || j >= c-1)
+  // solo celle interne: i in [1, r-2], j in [1, c-2]
+  if (i <= 0 || j <= 0 || i >= r-1 || j >= c-1)
     return;
 
-const int Xi[MOORE_NEIGHBORS] = {0, -1,  0,  0,  1, -1,  1,  1, -1};
-const int Xj[MOORE_NEIGHBORS] = {0,  0, -1,  1,  0, -1, -1,  1,  1};
+  const int Xi[MOORE_NEIGHBORS] = {0, -1,  0,  0,  1, -1,  1,  1, -1};
+  const int Xj[MOORE_NEIGHBORS] = {0,  0, -1,  1,  0, -1, -1,  1,  1};
 
-
-
-  bool eliminated[MOORE_NEIGHBORS];
+  bool   eliminated[MOORE_NEIGHBORS];
   double z[MOORE_NEIGHBORS];
   double h[MOORE_NEIGHBORS];
   double H[MOORE_NEIGHBORS];
   double theta[MOORE_NEIGHBORS];
-  double w[MOORE_NEIGHBORS];  // Distances between central and adjacent cells
-  double Pr[MOORE_NEIGHBORS]; // Relaxation rate array
-  double f[MOORE_NEIGHBORS];
-  bool loop;
-  int counter;
+  double w[MOORE_NEIGHBORS];
+  double Pr[MOORE_NEIGHBORS];
+  // double f[MOORE_NEIGHBORS]; // non serve nella formula finale
+
+  bool   loop;
+  int    counter;
   double sz0, sz, T, avg, rr, hc;
 
-  if (GET(Sh, c, i, j) <= 0)
+  if (GET(Sh, c, i, j) <= 0.0)
     return;
 
   T  = GET(ST, c, i, j);
   rr = pow(10.0, _a + _b * T);
   hc = pow(10.0, _c + _d * T);
 
+  // costruiamo z, h, w, Pr
   for (int k = 0; k < MOORE_NEIGHBORS; k++)
-{
+  {
     int ni = i + Xi[k];
     int nj = j + Xj[k];
 
-    // Boundary check
-    if (ni < 0 || ni >= r || nj < 0 || nj >= c) {
-        eliminated[k] = true;
-        continue;
-    }
-
-    sz0 = GET(Sz, c, i, j);
-    sz  = GET(Sz, c, ni, nj);
-    h[k] = GET(Sh, c, ni, nj);
-    w[k] = Pc;
+    // con i,j interni e questo pattern, ni,nj sono SEMPRE in [0,r-1],[0,c-1]
+    sz0   = GET(Sz, c, i,  j);
+    sz    = GET(Sz, c, ni, nj);
+    h[k]  = GET(Sh, c, ni, nj);
+    w[k]  = Pc;
     Pr[k] = rr;
 
     if (k < VON_NEUMANN_NEIGHBORS)
-        z[k] = sz;
+      z[k] = sz;
     else
-        z[k] = sz0 - (sz0 - sz) / sqrt(2.0);
-}
+      z[k] = sz0 - (sz0 - sz) / sqrt(2.0);
+  }
 
-
-  H[0]       = z[0];
-  theta[0]   = 0.0;
-  eliminated[0] = false;
+  H[0]         = z[0];
+  theta[0]     = 0.0;
+  eliminated[0]= false;
 
   for (int k = 1; k < MOORE_NEIGHBORS; k++)
+  {
     if (z[0] + h[0] > z[k] + h[k])
     {
-      H[k]        = z[k] + h[k];
-      theta[k]    = atan(((z[0] + h[0]) - (z[k] + h[k])) / w[k]);
-      eliminated[k] = false;
+      H[k]         = z[k] + h[k];
+      theta[k]     = atan(((z[0] + h[0]) - (z[k] + h[k])) / w[k]);
+      eliminated[k]= false;
     }
     else
     {
-      eliminated[k] = true;
+      eliminated[k]= true;
     }
+  }
 
+  // ciclo di eliminazione
   do
   {
-    loop = false;
-    avg  = h[0];
-    counter = 0;
+    loop   = false;
+    avg    = h[0];
+    counter= 0;
+
     for (int k = 0; k < MOORE_NEIGHBORS; k++)
       if (!eliminated[k])
       {
         avg += H[k];
         counter++;
       }
+
     if (counter != 0)
       avg = avg / double(counter);
+
     for (int k = 0; k < MOORE_NEIGHBORS; k++)
       if (!eliminated[k] && avg <= H[k])
       {
         eliminated[k] = true;
         loop = true;
       }
+
   } while (loop);
 
+  // calcolo dei flussi
   for (int k = 1; k < MOORE_NEIGHBORS; k++)
-{
+  {
     if (eliminated[k])
-        continue;  // NON scrivere in Mf per direzioni invalide
+    {
+      BUF_SET(Mf, r, c, k - 1, i, j, 0.0);
+      continue;
+    }
 
     if (h[0] > hc * cos(theta[k]))
-        BUF_SET(Mf, r, c, k - 1, i, j, Pr[k] * (avg - H[k]));
+      BUF_SET(Mf, r, c, k - 1, i, j, Pr[k] * (avg - H[k]));
     else
-        BUF_SET(Mf, r, c, k - 1, i, j, 0.0);
-}
-
+      BUF_SET(Mf, r, c, k - 1, i, j, 0.0);
+  }
 }
 
 __global__
@@ -196,21 +202,17 @@ void massBalance_kernel(
     double *ST,
     double *ST_next,
     double *Mf)
-
-
 {
   int i = blockIdx.y * blockDim.y + threadIdx.y;
   int j = blockIdx.x * blockDim.x + threadIdx.x;
+
   if (i <= 0 || j <= 0 || i >= r-1 || j >= c-1)
     return;
+
   const int Xi[MOORE_NEIGHBORS] = {0, -1,  0,  0,  1, -1,  1,  1, -1};
   const int Xj[MOORE_NEIGHBORS] = {0,  0, -1,  1,  0, -1, -1,  1,  1};
-
-
   const int inflowsIndices[NUMBER_OF_OUTFLOWS] = {3, 2, 1, 0, 6, 7, 4, 5};
-  double inFlow;
-  double outFlow;
-  double neigh_t;
+
   double initial_h = GET(Sh, c, i, j);
   double initial_t = GET(ST, c, i, j);
   double h_next    = initial_h;
@@ -219,16 +221,12 @@ void massBalance_kernel(
   for (int n = 1; n < MOORE_NEIGHBORS; n++)
   {
     int ni = i + Xi[n];
-int nj = j + Xj[n];
+    int nj = j + Xj[n];
 
-if (ni < 0 || nj < 0 || ni >= r || nj >= c) {
-    continue;  // Nessun flusso in entrata da fuori dominio
-}
-
-    neigh_t = GET(ST, c, ni, nj);
-    inFlow  = BUF_GET(Mf, r, c, inflowsIndices[n - 1], ni, nj);
-
-    outFlow = BUF_GET(Mf, r, c, n - 1, i, j);
+    // anche qui ni,nj sono in range con i,j interni
+    double neigh_t = GET(ST, c, ni, nj);
+    double inFlow  = BUF_GET(Mf, r, c, inflowsIndices[n - 1], ni, nj);
+    double outFlow = BUF_GET(Mf, r, c, n - 1, i,  j);
 
     h_next += inFlow - outFlow;
     t_next += (inFlow * neigh_t - outFlow * initial_t);
@@ -240,7 +238,7 @@ if (ni < 0 || nj < 0 || ni >= r || nj >= c) {
     SET(ST_next, c, i, j, t_next);
     SET(Sh_next, c, i, j, h_next);
   }
-  // else: lascia Sh_next e ST_next come erano (aggiornate altrove / inizializzate)
+  // se h_next <= 0, lasciamo Sh_next e ST_next come già impostati (da emitLava o step precedente)
 }
 
 __global__
@@ -267,28 +265,31 @@ void computeNewTemperatureAndSolidification_kernel(
 {
   int i = blockIdx.y * blockDim.y + threadIdx.y;
   int j = blockIdx.x * blockDim.x + threadIdx.x;
+
   if (i <= 0 || j <= 0 || i >= r-1 || j >= c-1)
     return;
 
-
-  double nT, aus;
   double z = GET(Sz, c, i, j);
   double h = GET(Sh, c, i, j);
   double T = GET(ST, c, i, j);
 
   if (h > 0.0 && GET(Mb, c, i, j) == false)
   {
-    aus = 1.0 + (3.0 * pow(T, 3.0) * Pepsilon * Psigma * Pclock * Pcool) / (Prho * Pcv * h * Pac);
-    nT  = T / pow(aus, 1.0 / 3.0);
+    double aus = 1.0 + (3.0 * pow(T, 3.0) * Pepsilon * Psigma * Pclock * Pcool) /
+                        (Prho * Pcv * h * Pac);
+    double nT  = T / pow(aus, 1.0 / 3.0);
 
     if (nT > PTsol) // no solidification
+    {
       SET(ST_next, c, i, j, nT);
+      // Sh_next viene già da massBalance (spessore aggiornato)
+    }
     else // solidification
     {
       SET(Sz_next, c, i, j, z + h);
       SET(Sh_next, c, i, j, 0.0);
       SET(ST_next, c, i, j, PTsol);
-      SET(Mhs, c, i, j, GET(Mhs, c, i, j) + h);
+      SET(Mhs,     c, i, j, GET(Mhs, c, i, j) + h);
     }
   }
 }
@@ -304,69 +305,64 @@ void boundaryConditions_kernel(
     double *ST,
     double *ST_next)
 {
-  // Nota: nel codice originale boundaryConditions è vuota (return immediato),
-  // quindi qui manteniamo lo stesso comportamento.
-  // Se in futuro vorrai applicare condizioni al contorno reali, puoi farlo qui.
-
+  // Nel codice originale boundaryConditions è praticamente un NOP.
+  // Manteniamo la stessa logica.
   int i = blockIdx.y * blockDim.y + threadIdx.y;
   int j = blockIdx.x * blockDim.x + threadIdx.x;
+
   if (i <= 0 || j <= 0 || i >= r-1 || j >= c-1)
     return;
 
-
-  // Se vuoi attivare BC in futuro:
-  // if (GET(Mb, c, i, j)) {
+  // Se un domani vuoi attivare vere BC:
+  // if (GET(Mb, c, i, j))
+  // {
   //   SET(Sh_next, c, i, j, 0.0);
   //   SET(ST_next, c, i, j, 0.0);
   // }
 }
 
 // ----------------------------------------------------------------------------
-// Riduzione CUDA (GLOBAL)
+// Riduzione CUDA (GLOBAL) su Sh
 // ----------------------------------------------------------------------------
 
 __global__
 void reduceAdd_kernel(double *in, double *partial, int N)
 {
-    extern __shared__ double sdata[];
+  extern __shared__ double sdata[];
 
-    int tid = threadIdx.x;
-    int gid = blockIdx.x * blockDim.x + threadIdx.x;
+  int tid = threadIdx.x;
+  int gid = blockIdx.x * blockDim.x + threadIdx.x;
 
-    // carica il valore in shared memory
-    if (gid < N)
-        sdata[tid] = in[gid];
-    else
-        sdata[tid] = 0.0;
+  if (gid < N)
+    sdata[tid] = in[gid];
+  else
+    sdata[tid] = 0.0;
 
+  __syncthreads();
+
+  for (int s = blockDim.x / 2; s > 0; s >>= 1)
+  {
+    if (tid < s)
+      sdata[tid] += sdata[tid + s];
     __syncthreads();
+  }
 
-    // riduzione nel blocco
-    for (int s = blockDim.x / 2; s > 0; s >>= 1)
-    {
-        if (tid < s)
-            sdata[tid] += sdata[tid + s];
-
-        __syncthreads();
-    }
-
-    // il thread 0 del blocco scrive il risultato parziale
-    if (tid == 0)
-        partial[blockIdx.x] = sdata[0];
+  if (tid == 0)
+    partial[blockIdx.x] = sdata[0];
 }
-
 
 double reduceAdd_gpu(int r, int c, double *buffer)
 {
-  int N = r * c;
+  int N       = r * c;
   int threads = 256;
   int blocks  = (N + threads - 1) / threads;
 
   double *partial = nullptr;
-  cudaCheck(cudaMallocManaged(&partial, blocks * sizeof(double)), "cudaMallocManaged(partial)");
+  cudaCheck(cudaMallocManaged(&partial, blocks * sizeof(double)),
+            "cudaMallocManaged(partial)");
 
   reduceAdd_kernel<<<blocks, threads, threads * sizeof(double)>>>(buffer, partial, N);
-  cudaCheck(cudaDeviceSynchronize(), "cudaDeviceSynchronize(reduceAdd_kernel)");
+  cudaCheck(cudaDeviceSynchronize(), "reduceAdd_kernel");
 
   double sum = 0.0;
   for (int i = 0; i < blocks; i++)
@@ -384,13 +380,9 @@ int main(int argc, char **argv)
   Sciara *sciara;
   init(sciara);
 
-  // Input data
+  // parametri I/O
   int max_steps = atoi(argv[MAX_STEPS_ID]);
   loadConfiguration(argv[INPUT_PATH_ID], sciara);
-
-  // Domain boundaries and neighborhood
-  int i_start = 0, i_end = sciara->domain->rows; // [i_start,i_end[: kernels application range along the rows
-  int j_start = 0, j_end = sciara->domain->cols; // [j_start,j_end[: kernels application range along the cols
 
   int r = sciara->domain->rows;
   int c = sciara->domain->cols;
@@ -399,14 +391,15 @@ int main(int argc, char **argv)
   dim3 gridDim((c + blockDim.x - 1) / blockDim.x,
                (r + blockDim.y - 1) / blockDim.y);
 
-  // simulation initialization and loop
   double total_current_lava = -1.0;
   simulationInitialize(sciara);
 
   util::Timer cl_timer;
 
-  int reduceInterval       = atoi(argv[REDUCE_INTERVL_ID]);
-  double thickness_threshold = atof(argv[THICKNESS_THRESHOLD_ID]);
+  int    reduceInterval       = atoi(argv[REDUCE_INTERVL_ID]);
+  double thickness_threshold  = atof(argv[THICKNESS_THRESHOLD_ID]);
+
+
 
   while ((max_steps > 0 && sciara->simulation->step < max_steps) ||
        (sciara->simulation->elapsed_time <= sciara->simulation->effusion_duration) ||
@@ -415,16 +408,27 @@ int main(int argc, char **argv)
     sciara->simulation->elapsed_time += sciara->parameters->Pclock;
     sciara->simulation->step++;
 
-    int cells = sciara->domain->rows * sciara->domain->cols;
-    cudaMemset(sciara->substates->Mf, 0, sizeof(double) * cells * NUMBER_OF_OUTFLOWS);
+    if (sciara->simulation->step % 500 == 0) {
+        printf("Step %d, current lava = %lf\n",
+               sciara->simulation->step, total_current_lava);
+    }
 
+    // ---------------- emitLava (CPU) ----------------
+    // Sh_next e ST_next devono contenere almeno i valori attuali iniziali
+    std::memcpy(sciara->substates->Sh_next,
+                sciara->substates->Sh,
+                sizeof(double) * r * c);
+    std::memcpy(sciara->substates->ST_next,
+                sciara->substates->ST,
+                sizeof(double) * r * c);
+    std::memcpy(sciara->substates->Sz_next,
+                sciara->substates->Sz,
+                sizeof(double) * r * c);
 
-    // ---------------- emitLava (host) ----------------
-    for (int i = i_start; i < i_end; i++)
-      for (int j = j_start; j < j_end; j++)
+    for (int i = 0; i < r; i++)
+      for (int j = 0; j < c; j++)
         emitLava(i, j,
-                 sciara->domain->rows,
-                 sciara->domain->cols,
+                 r, c,
                  sciara->simulation->vent,
                  sciara->simulation->elapsed_time,
                  sciara->parameters->Pclock,
@@ -436,7 +440,6 @@ int main(int argc, char **argv)
                  sciara->substates->Sh_next,
                  sciara->substates->ST_next);
 
-    // Copia Sh_next -> Sh, ST_next -> ST (Unified Memory: copia host-host)
     std::memcpy(sciara->substates->Sh,
                 sciara->substates->Sh_next,
                 sizeof(double) * r * c);
@@ -446,28 +449,34 @@ int main(int argc, char **argv)
 
     // ---------------- computeOutflows (GPU) ----------------
     computeOutflows_kernel<<<gridDim, blockDim>>>(
-    r, c,
-    sciara->substates->Sz,
-    sciara->substates->Sh,
-    sciara->substates->ST,
-    sciara->substates->Mf,
-    sciara->parameters->Pc,
-    sciara->parameters->a,
-    sciara->parameters->b,
-    sciara->parameters->c,
-    sciara->parameters->d);
-
+        r, c,
+        sciara->substates->Sz,
+        sciara->substates->Sh,
+        sciara->substates->ST,
+        sciara->substates->Mf,
+        sciara->parameters->Pc,
+        sciara->parameters->a,
+        sciara->parameters->b,
+        sciara->parameters->c,
+        sciara->parameters->d);
     cudaCheck(cudaDeviceSynchronize(), "computeOutflows_kernel");
 
     // ---------------- massBalance (GPU) ----------------
-    massBalance_kernel<<<gridDim, blockDim>>>(
-    r, c,
-    sciara->substates->Sh,
-    sciara->substates->Sh_next,
-    sciara->substates->ST,
-    sciara->substates->ST_next,
-    sciara->substates->Mf);
+    // Sh_next/ST_next verranno sovrascritti per le celle con h_next > 0
+    std::memcpy(sciara->substates->Sh_next,
+                sciara->substates->Sh,
+                sizeof(double) * r * c);
+    std::memcpy(sciara->substates->ST_next,
+                sciara->substates->ST,
+                sizeof(double) * r * c);
 
+    massBalance_kernel<<<gridDim, blockDim>>>(
+        r, c,
+        sciara->substates->Sh,
+        sciara->substates->Sh_next,
+        sciara->substates->ST,
+        sciara->substates->ST_next,
+        sciara->substates->Mf);
     cudaCheck(cudaDeviceSynchronize(), "massBalance_kernel");
 
     std::memcpy(sciara->substates->Sh,
@@ -478,6 +487,16 @@ int main(int argc, char **argv)
                 sizeof(double) * r * c);
 
     // ---------------- computeNewTemperatureAndSolidification (GPU) ----------------
+    std::memcpy(sciara->substates->Sz_next,
+                sciara->substates->Sz,
+                sizeof(double) * r * c);
+    std::memcpy(sciara->substates->Sh_next,
+                sciara->substates->Sh,
+                sizeof(double) * r * c);
+    std::memcpy(sciara->substates->ST_next,
+                sciara->substates->ST,
+                sizeof(double) * r * c);
+
     computeNewTemperatureAndSolidification_kernel<<<gridDim, blockDim>>>(
         r, c,
         sciara->parameters->Pepsilon,
@@ -509,7 +528,14 @@ int main(int argc, char **argv)
                 sciara->substates->ST_next,
                 sizeof(double) * r * c);
 
-    // ---------------- boundaryConditions (GPU, attualmente NOP) ----------------
+    // ---------------- boundaryConditions (GPU, di fatto NOP) ----------------
+    std::memcpy(sciara->substates->Sh_next,
+                sciara->substates->Sh,
+                sizeof(double) * r * c);
+    std::memcpy(sciara->substates->ST_next,
+                sciara->substates->ST,
+                sizeof(double) * r * c);
+
     boundaryConditions_kernel<<<gridDim, blockDim>>>(
         r, c,
         sciara->substates->Mf,

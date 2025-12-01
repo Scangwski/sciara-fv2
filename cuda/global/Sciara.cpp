@@ -97,25 +97,23 @@ void init(Sciara*& sciara)
 
   sciara->X = new NeighsRelativeCoords;
 
-// Allocate Xi/Xj in Unified Memory (GPU-accessible)
-cudaMallocManaged(&(sciara->X->Xi), sizeof(int) * MOORE_NEIGHBORS);
-cudaMallocManaged(&(sciara->X->Xj), sizeof(int) * MOORE_NEIGHBORS);
+  // Allocate Xi and Xj in Unified Memory (ESSENZIALE PER CUDA)
+  cudaMallocManaged(&sciara->X->Xi, MOORE_NEIGHBORS * sizeof(int));
+  cudaMallocManaged(&sciara->X->Xj, MOORE_NEIGHBORS * sizeof(int));
 
-// Copy CPU-side Neigh offsets into Unified Memory
-int Xi_cpu[MOORE_NEIGHBORS] = {0, -1,  0,  0,   1, -1,  1,  1, -1};
-int Xj_cpu[MOORE_NEIGHBORS] = {0,  0, -1,  1,   0, -1, -1,  1,  1};
+  int tmpXi[MOORE_NEIGHBORS] = {0, -1,  0,  0,  1, -1,  1,  1, -1};
+  int tmpXj[MOORE_NEIGHBORS] = {0,  0, -1,  1,  0, -1, -1,  1,  1};
 
-for (int n = 0; n < MOORE_NEIGHBORS; n++)
-{
-    sciara->X->Xi[n] = Xi_cpu[n];
-    sciara->X->Xj[n] = Xj_cpu[n];
-}
+  for (int n = 0; n < MOORE_NEIGHBORS; n++) {
+      sciara->X->Xi[n] = tmpXi[n];
+      sciara->X->Xj[n] = tmpXj[n];
+  }
 
-
-  sciara->substates = new Substates; //Substates allocation is done when the confiugration is loaded
+  sciara->substates = new Substates;
   sciara->parameters = new Parameters;
   sciara->simulation = new Simulation;
 }
+
 
 void finalize(Sciara*& sciara)
 {

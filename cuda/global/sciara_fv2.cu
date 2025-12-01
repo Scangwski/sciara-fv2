@@ -71,8 +71,6 @@ __global__
 void computeOutflows_kernel(
     int r,
     int c,
-    int *Xi,
-    int *Xj,
     double *Sz,
     double *Sh,
     double *ST,
@@ -82,12 +80,18 @@ void computeOutflows_kernel(
     double _b,
     double _c,
     double _d)
+
+
 {
   int i = blockIdx.y * blockDim.y + threadIdx.y;
 int j = blockIdx.x * blockDim.x + threadIdx.x;
 
 if (i <= 0 || j <= 0 || i >= r-1 || j >= c-1)
     return;
+
+const int Xi[MOORE_NEIGHBORS] = {0, -1,  0,  0,  1, -1,  1,  1, -1};
+const int Xj[MOORE_NEIGHBORS] = {0,  0, -1,  1,  0, -1, -1,  1,  1};
+
 
 
   bool eliminated[MOORE_NEIGHBORS];
@@ -114,11 +118,9 @@ if (i <= 0 || j <= 0 || i >= r-1 || j >= c-1)
     int ni = i + Xi[k];
     int nj = j + Xj[k];
 
-    
-    if (ni < 0 || nj < 0 || ni >= r || nj >= c) {
+    // Boundary check
+    if (ni < 0 || ni >= r || nj < 0 || nj >= c) {
         eliminated[k] = true;
-        h[k] = 0.0;
-        z[k] = GET(Sz, c, i, j);
         continue;
     }
 
@@ -189,18 +191,20 @@ __global__
 void massBalance_kernel(
     int r,
     int c,
-    int *Xi,
-    int *Xj,
     double *Sh,
     double *Sh_next,
     double *ST,
     double *ST_next,
     double *Mf)
+
+
 {
   int i = blockIdx.y * blockDim.y + threadIdx.y;
   int j = blockIdx.x * blockDim.x + threadIdx.x;
   if (i <= 0 || j <= 0 || i >= r-1 || j >= c-1)
     return;
+  const int Xi[MOORE_NEIGHBORS] = {0, -1,  0,  0,  1, -1,  1,  1, -1};
+  const int Xj[MOORE_NEIGHBORS] = {0,  0, -1,  1,  0, -1, -1,  1,  1};
 
 
   const int inflowsIndices[NUMBER_OF_OUTFLOWS] = {3, 2, 1, 0, 6, 7, 4, 5};
@@ -411,12 +415,9 @@ int main(int argc, char **argv)
     sciara->simulation->elapsed_time += sciara->parameters->Pclock;
     sciara->simulation->step++;
 
-    // 👇 AGGIUNGI QUESTO BLOCCO
     int cells = sciara->domain->rows * sciara->domain->cols;
+    cudaMemset(sciara->substates->Mf, 0, sizeof(double) * cells * NUMBER_OF_OUTFLOWS);
 
-    cudaMemset(sciara->substates->Sh_next, 0, sizeof(double) * cells);
-    cudaMemset(sciara->substates->ST_next, 0, sizeof(double) * cells);
-    cudaMemset(sciara->substates->Sz_next, 0, sizeof(double) * cells);
 
     // ---------------- emitLava (host) ----------------
     for (int i = i_start; i < i_end; i++)
@@ -445,30 +446,28 @@ int main(int argc, char **argv)
 
     // ---------------- computeOutflows (GPU) ----------------
     computeOutflows_kernel<<<gridDim, blockDim>>>(
-        r, c,
-        sciara->X->Xi,
-        sciara->X->Xj,
-        sciara->substates->Sz,
-        sciara->substates->Sh,
-        sciara->substates->ST,
-        sciara->substates->Mf,
-        sciara->parameters->Pc,
-        sciara->parameters->a,
-        sciara->parameters->b,
-        sciara->parameters->c,
-        sciara->parameters->d);
+    r, c,
+    sciara->substates->Sz,
+    sciara->substates->Sh,
+    sciara->substates->ST,
+    sciara->substates->Mf,
+    sciara->parameters->Pc,
+    sciara->parameters->a,
+    sciara->parameters->b,
+    sciara->parameters->c,
+    sciara->parameters->d);
+
     cudaCheck(cudaDeviceSynchronize(), "computeOutflows_kernel");
 
     // ---------------- massBalance (GPU) ----------------
     massBalance_kernel<<<gridDim, blockDim>>>(
-        r, c,
-        sciara->X->Xi,
-        sciara->X->Xj,
-        sciara->substates->Sh,
-        sciara->substates->Sh_next,
-        sciara->substates->ST,
-        sciara->substates->ST_next,
-        sciara->substates->Mf);
+    r, c,
+    sciara->substates->Sh,
+    sciara->substates->Sh_next,
+    sciara->substates->ST,
+    sciara->substates->ST_next,
+    sciara->substates->Mf);
+
     cudaCheck(cudaDeviceSynchronize(), "massBalance_kernel");
 
     std::memcpy(sciara->substates->Sh,

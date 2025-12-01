@@ -377,198 +377,163 @@ double reduceAdd_gpu(int r, int c, double *buffer)
 // ----------------------------------------------------------------------------
 int main(int argc, char **argv)
 {
-  Sciara *sciara;
-  init(sciara);
+    Sciara *sciara;
+    init(sciara);
 
-  // parametri I/O
-  int max_steps = atoi(argv[MAX_STEPS_ID]);
-  loadConfiguration(argv[INPUT_PATH_ID], sciara);
+    // Input data
+    int max_steps = atoi(argv[MAX_STEPS_ID]);
+    loadConfiguration(argv[INPUT_PATH_ID], sciara);
 
-  int r = sciara->domain->rows;
-  int c = sciara->domain->cols;
+    int r = sciara->domain->rows;
+    int c = sciara->domain->cols;
 
-  dim3 blockDim(16, 16);
-  dim3 gridDim((c + blockDim.x - 1) / blockDim.x,
-               (r + blockDim.y - 1) / blockDim.y);
+    dim3 blockDim(16,16);
+    dim3 gridDim((c + blockDim.x - 1) / blockDim.x,
+                 (r + blockDim.y - 1) / blockDim.y);
 
-  double total_current_lava = -1.0;
-  simulationInitialize(sciara);
+    // Simulation initialization
+    simulationInitialize(sciara);
 
-  util::Timer cl_timer;
+    util::Timer cl_timer;
+    double total_current_lava = -1.0;
 
-  int    reduceInterval       = atoi(argv[REDUCE_INTERVL_ID]);
-  double thickness_threshold  = atof(argv[THICKNESS_THRESHOLD_ID]);
+    int reduceInterval = atoi(argv[REDUCE_INTERVL_ID]);
+    double thickness_threshold = atof(argv[THICKNESS_THRESHOLD_ID]);
+
+  
+
+    // ---- MAIN LOOP ----
+    while (sciara->simulation->step < max_steps)
+
+    {
+        sciara->simulation->elapsed_time += sciara->parameters->Pclock;
+        sciara->simulation->step++;
 
 
+        // Reset dei buffer next (GPU)
+        cudaMemset(sciara->substates->Sh_next, 0, sizeof(double)*r*c);
+        cudaMemset(sciara->substates->ST_next, 0, sizeof(double)*r*c);
+        cudaMemset(sciara->substates->Sz_next, 0, sizeof(double)*r*c);
 
-  while ((max_steps > 0 && sciara->simulation->step < max_steps) ||
-       (sciara->simulation->elapsed_time <= sciara->simulation->effusion_duration) ||
-       (total_current_lava == -1 || total_current_lava > thickness_threshold))
-{
-    sciara->simulation->elapsed_time += sciara->parameters->Pclock;
-    sciara->simulation->step++;
+        // ---------------------------------------------
+        // 🔥 EMIT LAVA (CPU) — versione originale!
+        // ---------------------------------------------
+        for (int i = 0; i < r; i++)
+        {
+            for (int j = 0; j < c; j++)
+            {
+                emitLava(
+                    i, j,
+                    sciara->domain->rows,
+                    sciara->domain->cols,
+                    sciara->simulation->vent,
+                    sciara->simulation->elapsed_time,
+                    sciara->parameters->Pclock,
+                    sciara->simulation->emission_time,
+                    sciara->simulation->total_emitted_lava,
+                    sciara->parameters->Pac,
+                    sciara->parameters->PTvent,
+                    sciara->substates->Sh,
+                    sciara->substates->Sh_next,
+                    sciara->substates->ST_next
+                );
+            }
+        }
 
-    if (sciara->simulation->step % 500 == 0) {
-        printf("Step %d, current lava = %lf\n",
-               sciara->simulation->step, total_current_lava);
+        // Copiamo Sh_next → Sh, ST_next → ST  (CPU)
+        std::swap(sciara->substates->Sh, sciara->substates->Sh_next);
+        std::swap(sciara->substates->ST, sciara->substates->ST_next);
+
+        // ---------------------------------------------
+        // computeOutflows (GPU)
+        // ---------------------------------------------
+        computeOutflows_kernel<<<gridDim, blockDim>>>(
+            r, c,
+            sciara->substates->Sz,
+            sciara->substates->Sh,
+            sciara->substates->ST,
+            sciara->substates->Mf,
+            sciara->parameters->Pc,
+            sciara->parameters->a,
+            sciara->parameters->b,
+            sciara->parameters->c,
+            sciara->parameters->d
+        );
+
+        // ---------------------------------------------
+        // massBalance (GPU)
+        // ---------------------------------------------
+        massBalance_kernel<<<gridDim, blockDim>>>(
+            r, c,
+            sciara->substates->Sh,
+            sciara->substates->Sh_next,
+            sciara->substates->ST,
+            sciara->substates->ST_next,
+            sciara->substates->Mf
+        );
+
+        // swap Sh/ST buffers
+        std::swap(sciara->substates->Sh, sciara->substates->Sh_next);
+        std::swap(sciara->substates->ST, sciara->substates->ST_next);
+
+        // ---------------------------------------------
+        // Temperature + Solidification (GPU)
+        // ---------------------------------------------
+        computeNewTemperatureAndSolidification_kernel<<<gridDim, blockDim>>>(
+            r, c,
+            sciara->parameters->Pepsilon,
+            sciara->parameters->Psigma,
+            sciara->parameters->Pclock,
+            sciara->parameters->Pcool,
+            sciara->parameters->Prho,
+            sciara->parameters->Pcv,
+            sciara->parameters->Pac,
+            sciara->parameters->PTsol,
+            sciara->substates->Sz,
+            sciara->substates->Sz_next,
+            sciara->substates->Sh,
+            sciara->substates->Sh_next,
+            sciara->substates->ST,
+            sciara->substates->ST_next,
+            sciara->substates->Mf,
+            sciara->substates->Mhs,
+            sciara->substates->Mb
+        );
+
+        // swap again
+        std::swap(sciara->substates->Sh, sciara->substates->Sh_next);
+        std::swap(sciara->substates->ST, sciara->substates->ST_next);
+        std::swap(sciara->substates->Sz, sciara->substates->Sz_next);
+
+        // boundary (GPU)
+        boundaryConditions_kernel<<<gridDim, blockDim>>>(
+            r, c,
+            sciara->substates->Mf,
+            sciara->substates->Mb,
+            sciara->substates->Sh,
+            sciara->substates->Sh_next,
+            sciara->substates->ST,
+            sciara->substates->ST_next
+        );
+
+        std::swap(sciara->substates->Sh, sciara->substates->Sh_next);
+        std::swap(sciara->substates->ST, sciara->substates->ST_next);
+
+        // Reduction every N steps
+        if (sciara->simulation->step % reduceInterval == 0)
+        {
+            cudaDeviceSynchronize();
+            total_current_lava = reduceAdd_gpu(r, c, sciara->substates->Sh);
+            printf("Step %d, current lava = %lf\n",
+                sciara->simulation->step, total_current_lava);
+        }
     }
 
-    // ---------------- emitLava (CPU) ----------------
-    // Sh_next e ST_next devono contenere almeno i valori attuali iniziali
-    std::memcpy(sciara->substates->Sh_next,
-                sciara->substates->Sh,
-                sizeof(double) * r * c);
-    std::memcpy(sciara->substates->ST_next,
-                sciara->substates->ST,
-                sizeof(double) * r * c);
-    std::memcpy(sciara->substates->Sz_next,
-                sciara->substates->Sz,
-                sizeof(double) * r * c);
+    cudaDeviceSynchronize();
 
-    for (int i = 0; i < r; i++)
-      for (int j = 0; j < c; j++)
-        emitLava(i, j,
-                 r, c,
-                 sciara->simulation->vent,
-                 sciara->simulation->elapsed_time,
-                 sciara->parameters->Pclock,
-                 sciara->simulation->emission_time,
-                 sciara->simulation->total_emitted_lava,
-                 sciara->parameters->Pac,
-                 sciara->parameters->PTvent,
-                 sciara->substates->Sh,
-                 sciara->substates->Sh_next,
-                 sciara->substates->ST_next);
+    saveConfiguration(argv[OUTPUT_PATH_ID], sciara);
 
-    std::memcpy(sciara->substates->Sh,
-                sciara->substates->Sh_next,
-                sizeof(double) * r * c);
-    std::memcpy(sciara->substates->ST,
-                sciara->substates->ST_next,
-                sizeof(double) * r * c);
-
-    // ---------------- computeOutflows (GPU) ----------------
-    computeOutflows_kernel<<<gridDim, blockDim>>>(
-        r, c,
-        sciara->substates->Sz,
-        sciara->substates->Sh,
-        sciara->substates->ST,
-        sciara->substates->Mf,
-        sciara->parameters->Pc,
-        sciara->parameters->a,
-        sciara->parameters->b,
-        sciara->parameters->c,
-        sciara->parameters->d);
-    cudaCheck(cudaDeviceSynchronize(), "computeOutflows_kernel");
-
-    // ---------------- massBalance (GPU) ----------------
-    // Sh_next/ST_next verranno sovrascritti per le celle con h_next > 0
-    std::memcpy(sciara->substates->Sh_next,
-                sciara->substates->Sh,
-                sizeof(double) * r * c);
-    std::memcpy(sciara->substates->ST_next,
-                sciara->substates->ST,
-                sizeof(double) * r * c);
-
-    massBalance_kernel<<<gridDim, blockDim>>>(
-        r, c,
-        sciara->substates->Sh,
-        sciara->substates->Sh_next,
-        sciara->substates->ST,
-        sciara->substates->ST_next,
-        sciara->substates->Mf);
-    cudaCheck(cudaDeviceSynchronize(), "massBalance_kernel");
-
-    std::memcpy(sciara->substates->Sh,
-                sciara->substates->Sh_next,
-                sizeof(double) * r * c);
-    std::memcpy(sciara->substates->ST,
-                sciara->substates->ST_next,
-                sizeof(double) * r * c);
-
-    // ---------------- computeNewTemperatureAndSolidification (GPU) ----------------
-    std::memcpy(sciara->substates->Sz_next,
-                sciara->substates->Sz,
-                sizeof(double) * r * c);
-    std::memcpy(sciara->substates->Sh_next,
-                sciara->substates->Sh,
-                sizeof(double) * r * c);
-    std::memcpy(sciara->substates->ST_next,
-                sciara->substates->ST,
-                sizeof(double) * r * c);
-
-    computeNewTemperatureAndSolidification_kernel<<<gridDim, blockDim>>>(
-        r, c,
-        sciara->parameters->Pepsilon,
-        sciara->parameters->Psigma,
-        sciara->parameters->Pclock,
-        sciara->parameters->Pcool,
-        sciara->parameters->Prho,
-        sciara->parameters->Pcv,
-        sciara->parameters->Pac,
-        sciara->parameters->PTsol,
-        sciara->substates->Sz,
-        sciara->substates->Sz_next,
-        sciara->substates->Sh,
-        sciara->substates->Sh_next,
-        sciara->substates->ST,
-        sciara->substates->ST_next,
-        sciara->substates->Mf,
-        sciara->substates->Mhs,
-        sciara->substates->Mb);
-    cudaCheck(cudaDeviceSynchronize(), "computeNewTemperatureAndSolidification_kernel");
-
-    std::memcpy(sciara->substates->Sz,
-                sciara->substates->Sz_next,
-                sizeof(double) * r * c);
-    std::memcpy(sciara->substates->Sh,
-                sciara->substates->Sh_next,
-                sizeof(double) * r * c);
-    std::memcpy(sciara->substates->ST,
-                sciara->substates->ST_next,
-                sizeof(double) * r * c);
-
-    // ---------------- boundaryConditions (GPU, di fatto NOP) ----------------
-    std::memcpy(sciara->substates->Sh_next,
-                sciara->substates->Sh,
-                sizeof(double) * r * c);
-    std::memcpy(sciara->substates->ST_next,
-                sciara->substates->ST,
-                sizeof(double) * r * c);
-
-    boundaryConditions_kernel<<<gridDim, blockDim>>>(
-        r, c,
-        sciara->substates->Mf,
-        sciara->substates->Mb,
-        sciara->substates->Sh,
-        sciara->substates->Sh_next,
-        sciara->substates->ST,
-        sciara->substates->ST_next);
-    cudaCheck(cudaDeviceSynchronize(), "boundaryConditions_kernel");
-
-    std::memcpy(sciara->substates->Sh,
-                sciara->substates->Sh_next,
-                sizeof(double) * r * c);
-    std::memcpy(sciara->substates->ST,
-                sciara->substates->ST_next,
-                sizeof(double) * r * c);
-
-    // ---------------- Global reduction (GPU) ----------------
-    if (sciara->simulation->step % reduceInterval == 0)
-      total_current_lava = reduceAdd_gpu(r, c, sciara->substates->Sh);
-  }
-
-  double cl_time = static_cast<double>(cl_timer.getTimeMilliseconds()) / 1000.0;
-  printf("Step %d\n", sciara->simulation->step);
-  printf("Elapsed time [s]: %lf\n", cl_time);
-  printf("Emitted lava [m]: %lf\n", sciara->simulation->total_emitted_lava);
-  printf("Current lava [m]: %lf\n", total_current_lava);
-
-  printf("Saving output to %s...\n", argv[OUTPUT_PATH_ID]);
-  saveConfiguration(argv[OUTPUT_PATH_ID], sciara);
-
-  printf("Releasing memory...\n");
-  finalize(sciara);
-
-  return 0;
+    printf("Releasing memory...\n");
+    finalize(sciara);
+    return 0;
 }

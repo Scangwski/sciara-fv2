@@ -16,7 +16,7 @@ CPU_SRC    := ../../cpu/Sciara.cpp \
 
 CUDA_SRC   := sciara_fv2.cu
 
-TARGET     := sciara_tiled
+TARGET     := sciara_tiled_wHalo
 
 # =============================================================================
 # Build

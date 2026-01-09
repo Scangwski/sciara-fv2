@@ -65,7 +65,7 @@ cuda_cfame:
 cuda_cfamo:
 	$(NVCC) $(NVFLAGS) $(CPP_SOURCES_FOR_CUDA) sciara_fv2_cfamo.cu -o $(EXEC_CUDA_CFAMO)
 
-sciara_cuda: cuda cuda_tiled cuda_tiled_halo #cuda_cfame cuda_cfamo
+sciara_cuda: cuda cuda_tiled cuda_tiled_halo cuda_cfame cuda_cfamo
 
 
 #############
@@ -94,6 +94,8 @@ run_cuda_cfame:
 
 run_cuda_cfamo:
 	./$(EXEC_CUDA_CFAMO) $(INPUT_CONFIG) $(OUTPUT_CONFIG) $(STEPS) $(REDUCE_INTERVL) $(THICKNESS_THRESHOLD) && md5sum $(OUTPUT)
+
+run_all_cuda: run_cuda run_cuda_tiled run_cuda_tiled_halo run_cuda_cfame run_cuda_cfamo
 
 ############
 #  PROFILE #

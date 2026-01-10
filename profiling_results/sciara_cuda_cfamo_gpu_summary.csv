@@ -1,0 +1,17 @@
+==1183633== NVPROF is profiling process 1183633, command: ./sciara_cuda_cfamo ./data/2006/2006_000000000000.cfg ./data/2006/output_2006 16000 1000 1.0
+==1183633== Profiling application: ./sciara_cuda_cfamo ./data/2006/2006_000000000000.cfg ./data/2006/output_2006 16000 1000 1.0
+==1183633== Profiling result:
+"Type","Time(%)","Time","Calls","Avg","Min","Max","Name"
+,%,s,,us,us,us,
+"GPU activities",82.996771,3.961820,16000,247.613000,241.889000,254.145000,"void cfamo_fused_kernel_tiled_halo2<int=16, int=16>(int, int, double*, double*, double*, double*, double*, double, double, double, double, double)"
+"GPU activities",9.364257,0.446999,48000,9.312000,7.072000,13.408000,"[CUDA memset]"
+"GPU activities",5.975543,0.285240,16000,17.827000,15.232000,22.336000,"computeNewTemperatureAndSolidification_kernel(int, int, double, double, double, double, double, double, double, double, double*, double*, double*, double*, double*, double*, double*, double*, bool*)"
+"GPU activities",1.653252,0.078917,16000,4.932000,4.480000,10.080000,"boundaryConditions_kernel(int, int, double*, bool*, double*, double*, double*, double*)"
+"GPU activities",0.010057,0.000480,16,30.004000,29.248000,30.337000,"reduceAdd_kernel(double*, double*, int)"
+"GPU activities",0.000120,0.000006,3,1.909000,1.376000,2.752000,"[CUDA memcpy HtoD]"
+
+==1183633== Unified Memory profiling result:
+"Device","Count","Avg Size","Min Size","Max Size","Total Size","Total Time",""
+"NVIDIA GeForce GTX 980 (0)",32004,4.100586KB,4.000000KB,1.492188MB,128.179688MB,0.000000,"Host To Device"
+"NVIDIA GeForce GTX 980 (0)",144153,21.382812KB,4.000000KB,508.000000KB,2.939651GB,0.000001,"Device To Host"
+Total CPU Page faults: 48068

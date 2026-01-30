@@ -1,8 +1,8 @@
-==1184577== NVPROF is profiling process 1184577, command: ./sciara_cuda_tiled_halo ./data/2006/2006_000000000000.cfg ./data/2006/output_2006 10 10 1.0
-==1184577== Some kernel(s) will be replayed on device 0 in order to collect all events/metrics.
-==1184577== Profiling application: ./sciara_cuda_tiled_halo ./data/2006/2006_000000000000.cfg ./data/2006/output_2006 10 10 1.0
-==1184577== Profiling result:
-==1184577== Metric result:
+==585097== NVPROF is profiling process 585097, command: ./sciara_cuda_tiled_halo ./data/2006/2006_000000000000.cfg ./data/2006/output_2006 10 10 1.0
+==585097== Some kernel(s) will be replayed on device 0 in order to collect all events/metrics.
+==585097== Profiling application: ./sciara_cuda_tiled_halo ./data/2006/2006_000000000000.cfg ./data/2006/output_2006 10 10 1.0
+==585097== Profiling result:
+==585097== Metric result:
 "Device","Kernel","Invocations","Metric Name","Metric Description","Min","Max","Avg"
 "NVIDIA GeForce GTX 980 (0)","void computeOutflows_kernel_tiled_wHalo<int=16, int=16>(int, int, double*, double*, double*, double*, double, double, double, double, double)",10,"flop_count_dp","Floating Point Operations(Double Precision)",1314,2060,1985
 "NVIDIA GeForce GTX 980 (0)","void computeOutflows_kernel_tiled_wHalo<int=16, int=16>(int, int, double*, double*, double*, double*, double, double, double, double, double)",10,"flop_count_sp","Floating Point Operations(Single Precision)",48,52,51

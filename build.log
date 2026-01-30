@@ -1,0 +1,15 @@
+nvcc -O3  -I. -Icpu -Icuda/common cpu/cal2DBuffer.cpp cpu/cal2DBufferIO.cpp cpu/configurationPathLib.cpp cpu/GISInfo.cpp cpu/io.cpp cpu/Sciara.cpp cpu/sciara_fv2.cpp cpu/vent.cpp -o sciara_serial
+nvcc -O3  -I. -Icpu -Icuda/common -Xcompiler -fopenmp cpu/cal2DBuffer.cpp cpu/cal2DBufferIO.cpp cpu/configurationPathLib.cpp cpu/GISInfo.cpp cpu/io.cpp cpu/Sciara.cpp cpu/sciara_fv2.cpp cpu/vent.cpp -o sciara_omp
+nvcc -O3  -I. -Icpu -Icuda/common cpu/cal2DBuffer.cpp cpu/cal2DBufferIO.cpp cpu/configurationPathLib.cpp cpu/GISInfo.cpp cpu/io.cpp cpu/Sciara.cpp cpu/vent.cpp sciara_fv2.cu -o sciara_cuda
+nvcc -O3  -I. -Icpu -Icuda/common cpu/cal2DBuffer.cpp cpu/cal2DBufferIO.cpp cpu/configurationPathLib.cpp cpu/GISInfo.cpp cpu/io.cpp cpu/Sciara.cpp cpu/vent.cpp sciara_fv2_tiled.cu -o sciara_cuda_tiled
+sciara_fv2_tiled.cu(203): warning: variable "idx" was declared but never referenced
+
+nvcc -O3  -I. -Icpu -Icuda/common cpu/cal2DBuffer.cpp cpu/cal2DBufferIO.cpp cpu/configurationPathLib.cpp cpu/GISInfo.cpp cpu/io.cpp cpu/Sciara.cpp cpu/vent.cpp sciara_fv2_tiled_halo.cu -o sciara_cuda_tiled_halo
+sciara_fv2_tiled_halo.cu(235): warning: variable "base" was declared but never referenced
+
+sciara_fv2_tiled_halo.cu(172): warning: variable "getSTL" was declared but never referenced
+          detected during instantiation of "void computeOutflows_kernel_tiled_wHalo<BX,BY>(int, int, double *, double *, double *, double *, double, double, double, double, double) [with BX=16, BY=16]" 
+(504): here
+
+nvcc -O3  -I. -Icpu -Icuda/common cpu/cal2DBuffer.cpp cpu/cal2DBufferIO.cpp cpu/configurationPathLib.cpp cpu/GISInfo.cpp cpu/io.cpp cpu/Sciara.cpp cpu/vent.cpp sciara_fv2_cfame.cu -o sciara_cuda_cfame
+nvcc -O3  -I. -Icpu -Icuda/common cpu/cal2DBuffer.cpp cpu/cal2DBufferIO.cpp cpu/configurationPathLib.cpp cpu/GISInfo.cpp cpu/io.cpp cpu/Sciara.cpp cpu/vent.cpp sciara_fv2_cfamo.cu -o sciara_cuda_cfamo

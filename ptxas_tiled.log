@@ -1,0 +1,29 @@
+sciara_fv2_tiled.cu(203): warning: variable "idx" was declared but never referenced
+
+ptxas info    : 272 bytes gmem, 72 bytes cmem[3]
+ptxas info    : Compiling entry function '_Z24massBalance_kernel_tiledILi16ELi16EEviiPdS0_S0_S0_S0_' for 'sm_52'
+ptxas info    : Function properties for _Z24massBalance_kernel_tiledILi16ELi16EEviiPdS0_S0_S0_S0_
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 32 registers, 4096 bytes smem, 368 bytes cmem[0], 32 bytes cmem[2]
+ptxas info    : Compiling entry function '_Z28computeOutflows_kernel_tiledILi16ELi16EEviiPdS0_S0_S0_ddddd' for 'sm_52'
+ptxas info    : Function properties for _Z28computeOutflows_kernel_tiledILi16ELi16EEviiPdS0_S0_S0_ddddd
+    48 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 78 registers, 6144 bytes smem, 400 bytes cmem[0], 444 bytes cmem[2]
+ptxas info    : Function properties for __internal_accurate_pow
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for __internal_trig_reduction_slowpathd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Compiling entry function '_Z16reduceAdd_kernelPdS_i' for 'sm_52'
+ptxas info    : Function properties for _Z16reduceAdd_kernelPdS_i
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 10 registers, 340 bytes cmem[0]
+ptxas info    : Compiling entry function '_Z25boundaryConditions_kerneliiPdPbS_S_S_S_' for 'sm_52'
+ptxas info    : Function properties for _Z25boundaryConditions_kerneliiPdPbS_S_S_S_
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 2 registers, 376 bytes cmem[0]
+ptxas info    : Compiling entry function '_Z45computeNewTemperatureAndSolidification_kerneliiddddddddPdS_S_S_S_S_S_S_Pb' for 'sm_52'
+ptxas info    : Function properties for _Z45computeNewTemperatureAndSolidification_kerneliiddddddddPdS_S_S_S_S_S_S_Pb
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 32 registers, 464 bytes cmem[0], 252 bytes cmem[2]
+ptxas info    : Function properties for __internal_accurate_pow
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads

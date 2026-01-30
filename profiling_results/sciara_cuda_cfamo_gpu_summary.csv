@@ -1,16 +1,16 @@
-==1183633== NVPROF is profiling process 1183633, command: ./sciara_cuda_cfamo ./data/2006/2006_000000000000.cfg ./data/2006/output_2006 16000 1000 1.0
-==1183633== Profiling application: ./sciara_cuda_cfamo ./data/2006/2006_000000000000.cfg ./data/2006/output_2006 16000 1000 1.0
-==1183633== Profiling result:
+==584693== NVPROF is profiling process 584693, command: ./sciara_cuda_cfamo ./data/2006/2006_000000000000.cfg ./data/2006/output_2006 16000 1000 1.0
+==584693== Profiling application: ./sciara_cuda_cfamo ./data/2006/2006_000000000000.cfg ./data/2006/output_2006 16000 1000 1.0
+==584693== Profiling result:
 "Type","Time(%)","Time","Calls","Avg","Min","Max","Name"
 ,%,s,,us,us,us,
-"GPU activities",82.996771,3.961820,16000,247.613000,241.889000,254.145000,"void cfamo_fused_kernel_tiled_halo2<int=16, int=16>(int, int, double*, double*, double*, double*, double*, double, double, double, double, double)"
-"GPU activities",9.364257,0.446999,48000,9.312000,7.072000,13.408000,"[CUDA memset]"
-"GPU activities",5.975543,0.285240,16000,17.827000,15.232000,22.336000,"computeNewTemperatureAndSolidification_kernel(int, int, double, double, double, double, double, double, double, double, double*, double*, double*, double*, double*, double*, double*, double*, bool*)"
-"GPU activities",1.653252,0.078917,16000,4.932000,4.480000,10.080000,"boundaryConditions_kernel(int, int, double*, bool*, double*, double*, double*, double*)"
-"GPU activities",0.010057,0.000480,16,30.004000,29.248000,30.337000,"reduceAdd_kernel(double*, double*, int)"
-"GPU activities",0.000120,0.000006,3,1.909000,1.376000,2.752000,"[CUDA memcpy HtoD]"
+"GPU activities",83.001801,4.272865,16000,267.054000,263.042000,272.865000,"void cfamo_fused_kernel_tiled_halo2<int=16, int=16>(int, int, double*, double*, double*, double*, double*, double, double, double, double, double)"
+"GPU activities",9.595129,0.493949,48000,10.290000,7.616000,12.800000,"[CUDA memset]"
+"GPU activities",5.563474,0.286403,16000,17.900000,15.936000,20.512000,"computeNewTemperatureAndSolidification_kernel(int, int, double, double, double, double, double, double, double, double, double*, double*, double*, double*, double*, double*, double*, double*, bool*)"
+"GPU activities",1.829656,0.094189,16000,5.886000,4.896000,6.816000,"boundaryConditions_kernel(int, int, double*, bool*, double*, double*, double*, double*)"
+"GPU activities",0.009854,0.000507,16,31.704000,31.456000,31.905000,"reduceAdd_kernel(double*, double*, int)"
+"GPU activities",0.000086,0.000004,3,1.482000,1.312000,1.792000,"[CUDA memcpy HtoD]"
 
-==1183633== Unified Memory profiling result:
+==584693== Unified Memory profiling result:
 "Device","Count","Avg Size","Min Size","Max Size","Total Size","Total Time",""
 "NVIDIA GeForce GTX 980 (0)",32004,4.100586KB,4.000000KB,1.492188MB,128.179688MB,0.000000,"Host To Device"
 "NVIDIA GeForce GTX 980 (0)",144153,21.382812KB,4.000000KB,508.000000KB,2.939651GB,0.000001,"Device To Host"

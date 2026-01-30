@@ -1,0 +1,33 @@
+sciara_fv2_tiled_halo.cu(235): warning: variable "base" was declared but never referenced
+
+sciara_fv2_tiled_halo.cu(172): warning: variable "getSTL" was declared but never referenced
+          detected during instantiation of "void computeOutflows_kernel_tiled_wHalo<BX,BY>(int, int, double *, double *, double *, double *, double, double, double, double, double) [with BX=16, BY=16]" 
+(504): here
+
+ptxas info    : 272 bytes gmem, 72 bytes cmem[3]
+ptxas info    : Compiling entry function '_Z30massBalance_kernel_tiled_wHaloILi16ELi16EEviiPdS0_S0_S0_S0_' for 'sm_52'
+ptxas info    : Function properties for _Z30massBalance_kernel_tiled_wHaloILi16ELi16EEviiPdS0_S0_S0_S0_
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 32 registers, 5184 bytes smem, 368 bytes cmem[0], 32 bytes cmem[2]
+ptxas info    : Compiling entry function '_Z34computeOutflows_kernel_tiled_wHaloILi16ELi16EEviiPdS0_S0_S0_ddddd' for 'sm_52'
+ptxas info    : Function properties for _Z34computeOutflows_kernel_tiled_wHaloILi16ELi16EEviiPdS0_S0_S0_ddddd
+    48 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 78 registers, 7776 bytes smem, 400 bytes cmem[0], 444 bytes cmem[2]
+ptxas info    : Function properties for __internal_accurate_pow
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for __internal_trig_reduction_slowpathd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Compiling entry function '_Z16reduceAdd_kernelPdS_i' for 'sm_52'
+ptxas info    : Function properties for _Z16reduceAdd_kernelPdS_i
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 10 registers, 340 bytes cmem[0]
+ptxas info    : Compiling entry function '_Z25boundaryConditions_kerneliiPdPbS_S_S_S_' for 'sm_52'
+ptxas info    : Function properties for _Z25boundaryConditions_kerneliiPdPbS_S_S_S_
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 2 registers, 376 bytes cmem[0]
+ptxas info    : Compiling entry function '_Z45computeNewTemperatureAndSolidification_kerneliiddddddddPdS_S_S_S_S_S_S_Pb' for 'sm_52'
+ptxas info    : Function properties for _Z45computeNewTemperatureAndSolidification_kerneliiddddddddPdS_S_S_S_S_S_S_Pb
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 32 registers, 464 bytes cmem[0], 252 bytes cmem[2]
+ptxas info    : Function properties for __internal_accurate_pow
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads

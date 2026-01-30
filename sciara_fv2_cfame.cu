@@ -408,6 +408,8 @@ double reduceAdd_gpu(int r,int c,double *buffer)
 // ============================================================================
 int main(int argc, char **argv)
 {
+    printf("RUNNING %s | build %s %s\n", __FILE__, __DATE__, __TIME__);
+
     Sciara *sciara;
     init(sciara);
 
@@ -418,61 +420,58 @@ int main(int argc, char **argv)
     int c = sciara->domain->cols;
 
     // Upload neighbor arrays
-    int Xi_host[MOORE_NEIGHBORS]={0,-1,0,0,1,-1,1,1,-1};
-    int Xj_host[MOORE_NEIGHBORS]={0,0,-1,1,0,-1,-1,1,1};
+    int Xi_host[MOORE_NEIGHBORS] = {0,-1,0,0,1,-1,1,1,-1};
+    int Xj_host[MOORE_NEIGHBORS] = {0,0,-1,1,0,-1,-1,1,1};
     cudaMemcpyToSymbol(dXi, Xi_host, sizeof(int)*MOORE_NEIGHBORS);
     cudaMemcpyToSymbol(dXj, Xj_host, sizeof(int)*MOORE_NEIGHBORS);
 
+    // Opposite-neighbor map (for fused kernel)
     int hOpp[MOORE_NEIGHBORS];
-
-    // centro: non usato
     hOpp[0] = 0;
-
     for (int k = 1; k < MOORE_NEIGHBORS; ++k) {
         hOpp[k] = -1;
         for (int q = 1; q < MOORE_NEIGHBORS; ++q) {
-            if (Xi_host[q] == -Xi_host[k] &&
-                Xj_host[q] == -Xj_host[k]) {
+            if (Xi_host[q] == -Xi_host[k] && Xj_host[q] == -Xj_host[k]) {
                 hOpp[k] = q;
                 break;
             }
         }
     }
-
     cudaMemcpyToSymbol(dOpp, hOpp, sizeof(int)*MOORE_NEIGHBORS);
 
-
     dim3 blockDim(TILE_X, TILE_Y);
-    dim3 gridDim((c+TILE_X-1)/TILE_X,(r+TILE_Y-1)/TILE_Y);
+    dim3 gridDim((c + TILE_X - 1) / TILE_X, (r + TILE_Y - 1) / TILE_Y);
 
     simulationInitialize(sciara);
 
-    util::Timer cl_timer;
-    double total_current_lava = -1.0;
-
     int reduceInterval = atoi(argv[REDUCE_INTERVL_ID]);
     double thickness_threshold = atof(argv[THICKNESS_THRESHOLD_ID]);
+
+    double total_current_lava = -1.0;
+
+    // Start timing after initialization is done
+    cudaDeviceSynchronize();
+    util::Timer cl_timer;
 
     // ========================================================================
     // MAIN LOOP
     // ========================================================================
     while ((max_steps > 0 && sciara->simulation->step < max_steps) &&
-       ((sciara->simulation->elapsed_time <= sciara->simulation->effusion_duration) ||
-        (total_current_lava == -1 || total_current_lava > thickness_threshold)))
-
+           ((sciara->simulation->elapsed_time <= sciara->simulation->effusion_duration) ||
+            (total_current_lava == -1 || total_current_lava > thickness_threshold)))
     {
         sciara->simulation->elapsed_time += sciara->parameters->Pclock;
         sciara->simulation->step++;
 
-        cudaMemset(sciara->substates->Sh_next,0,sizeof(double)*r*c);
-        cudaMemset(sciara->substates->ST_next,0,sizeof(double)*r*c);
-        cudaMemset(sciara->substates->Sz_next,0,sizeof(double)*r*c);
+        cudaMemset(sciara->substates->Sh_next, 0, sizeof(double)*r*c);
+        cudaMemset(sciara->substates->ST_next, 0, sizeof(double)*r*c);
+        cudaMemset(sciara->substates->Sz_next, 0, sizeof(double)*r*c);
 
         // ---------------- EMIT LAVA (CPU) ----------------
-        for(int i=0;i<r;i++)
-            for(int j=0;j<c;j++)
-                emitLava(i,j,
-                    r,c,
+        for (int i = 0; i < r; i++)
+            for (int j = 0; j < c; j++)
+                emitLava(i, j,
+                    r, c,
                     sciara->simulation->vent,
                     sciara->simulation->elapsed_time,
                     sciara->parameters->Pclock,
@@ -488,28 +487,27 @@ int main(int argc, char **argv)
         std::swap(sciara->substates->Sh, sciara->substates->Sh_next);
         std::swap(sciara->substates->ST, sciara->substates->ST_next);
 
-        // ---------------- CfAMe (FUSED OUTFLOWS + MASS BALANCE) ----------------
-cfame_fused_kernel_tiled_halo2<TILE_X, TILE_Y><<<gridDim, blockDim>>>(
-    r, c,
-    sciara->substates->Sz,
-    sciara->substates->Sh,
-    sciara->substates->ST,
-    sciara->substates->Sh_next,
-    sciara->substates->ST_next,
-    sciara->parameters->Pc,
-    sciara->parameters->a,
-    sciara->parameters->b,
-    sciara->parameters->c,
-    sciara->parameters->d
-);
-
+        // ---------------- CFAME (FUSED OUTFLOWS + MASS BALANCE) ----------------
+        cfame_fused_kernel_tiled_halo2<TILE_X, TILE_Y><<<gridDim, blockDim>>>(
+            r, c,
+            sciara->substates->Sz,
+            sciara->substates->Sh,
+            sciara->substates->ST,
+            sciara->substates->Sh_next,
+            sciara->substates->ST_next,
+            sciara->parameters->Pc,
+            sciara->parameters->a,
+            sciara->parameters->b,
+            sciara->parameters->c,
+            sciara->parameters->d
+        );
 
         std::swap(sciara->substates->Sh, sciara->substates->Sh_next);
         std::swap(sciara->substates->ST, sciara->substates->ST_next);
 
         // ---------------- TEMPERATURE + SOLIDIFICATION ----------------
-        computeNewTemperatureAndSolidification_kernel<<<gridDim,blockDim>>>(
-            r,c,
+        computeNewTemperatureAndSolidification_kernel<<<gridDim, blockDim>>>(
+            r, c,
             sciara->parameters->Pepsilon,
             sciara->parameters->Psigma,
             sciara->parameters->Pclock,
@@ -534,8 +532,8 @@ cfame_fused_kernel_tiled_halo2<TILE_X, TILE_Y><<<gridDim, blockDim>>>(
         std::swap(sciara->substates->Sz, sciara->substates->Sz_next);
 
         // ---------------- BOUNDARY CONDITIONS ----------------
-        boundaryConditions_kernel<<<gridDim,blockDim>>>(
-            r,c,
+        boundaryConditions_kernel<<<gridDim, blockDim>>>(
+            r, c,
             sciara->substates->Mf,
             sciara->substates->Mb,
             sciara->substates->Sh,
@@ -548,19 +546,27 @@ cfame_fused_kernel_tiled_halo2<TILE_X, TILE_Y><<<gridDim, blockDim>>>(
         std::swap(sciara->substates->ST, sciara->substates->ST_next);
 
         // ---------------- REDUCTION ----------------
-        if (sciara->simulation->step % reduceInterval == 0)
+        if (reduceInterval > 0 && (sciara->simulation->step % reduceInterval == 0))
         {
             cudaDeviceSynchronize();
-            total_current_lava = reduceAdd_gpu(r,c,sciara->substates->Sh);
-            printf("Step %d, current lava = %lf\n",
-                sciara->simulation->step, total_current_lava);
+            total_current_lava = reduceAdd_gpu(r, c, sciara->substates->Sh);
         }
     }
 
     cudaDeviceSynchronize();
 
+    double cl_time = static_cast<double>(cl_timer.getTimeMilliseconds()) / 1000.0;
+    printf("Final Step %d\n", sciara->simulation->step);
+    printf("Elapsed time [s]: %lf\n", cl_time);
+    printf("Emitted lava [m]: %lf\n", sciara->simulation->total_emitted_lava);
+    printf("Current lava [m]: %lf\n", total_current_lava);
+
+    printf("Saving output to %s...\n", argv[OUTPUT_PATH_ID]);
     saveConfiguration(argv[OUTPUT_PATH_ID], sciara);
+
+    printf("Releasing memory...\n");
     finalize(sciara);
 
     return 0;
 }
+

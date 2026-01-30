@@ -72,24 +72,26 @@ void emitLava(
 
 __global__
 void computeOutflows_kernel(
-    int r,
-    int c,
-    double *Sz,
-    double *Sh,
-    double *ST,
+    int r, int c,
+    double *Sz, double *Sh, double *ST,
     double *Mf,
     double Pc,
-    double _a,
-    double _b,
-    double _c,
-    double _d)
+    double _a, double _b, double _c, double _d)
 {
   int i = blockIdx.y * blockDim.y + threadIdx.y;
   int j = blockIdx.x * blockDim.x + threadIdx.x;
 
-  // solo celle interne: i in [1, r-2], j in [1, c-2]
-  if (i <= 0 || j <= 0 || i >= r-1 || j >= c-1)
-    return;
+  // fuori griglia: non toccare nulla
+  if (i >= r || j >= c) return;
+
+  #pragma unroll
+  for (int n = 0; n < NUMBER_OF_OUTFLOWS; n++)
+    BUF_SET(Mf, r, c, n, i, j, 0.0);
+
+  // boundary: nessun flusso (ma Mf è già 0)
+  if (i == 0 || j == 0 || i == r-1 || j == c-1) return;
+
+  if (GET(Sh, c, i, j) <= 0.0) return;
 
   const int Xi[MOORE_NEIGHBORS] = {0, -1,  0,  0,  1, -1,  1,  1, -1};
   const int Xj[MOORE_NEIGHBORS] = {0,  0, -1,  1,  0, -1, -1,  1,  1};
@@ -101,31 +103,29 @@ void computeOutflows_kernel(
   double theta[MOORE_NEIGHBORS];
   double w[MOORE_NEIGHBORS];
   double Pr[MOORE_NEIGHBORS];
-  // double f[MOORE_NEIGHBORS]; // non serve nella formula finale
 
   bool   loop;
   int    counter;
-  double sz0, sz, T, avg, rr, hc;
-
-  if (GET(Sh, c, i, j) <= 0.0)
-    return;
+  double sz, T, avg, rr, hc;
 
   T  = GET(ST, c, i, j);
   rr = pow(10.0, _a + _b * T);
   hc = pow(10.0, _c + _d * T);
 
-  // costruiamo z, h, w, Pr
+  const double sz0 = GET(Sz, c, i, j);   // spostato fuori dal loop
+
+  // costruzione z, h, w, Pr
   for (int k = 0; k < MOORE_NEIGHBORS; k++)
   {
     int ni = i + Xi[k];
     int nj = j + Xj[k];
 
-    // con i,j interni e questo pattern, ni,nj sono SEMPRE in [0,r-1],[0,c-1]
-    sz0   = GET(Sz, c, i,  j);
-    sz    = GET(Sz, c, ni, nj);
-    h[k]  = GET(Sh, c, ni, nj);
-    w[k]  = Pc;
-    Pr[k] = rr;
+    sz   = GET(Sz, c, ni, nj);
+    h[k] = GET(Sh, c, ni, nj);
+    Pr[k]= rr;
+
+    // cardinali: Pc, diagonali: Pc*sqrt(2)
+    w[k] = (k < VON_NEUMANN_NEIGHBORS) ? Pc : (Pc * sqrt(2.0));
 
     if (k < VON_NEUMANN_NEIGHBORS)
       z[k] = sz;
@@ -133,63 +133,45 @@ void computeOutflows_kernel(
       z[k] = sz0 - (sz0 - sz) / sqrt(2.0);
   }
 
-  H[0]         = z[0];
-  theta[0]     = 0.0;
-  eliminated[0]= false;
+  H[0]          = z[0];
+  theta[0]      = 0.0;
+  eliminated[0] = false;
 
   for (int k = 1; k < MOORE_NEIGHBORS; k++)
   {
     if (z[0] + h[0] > z[k] + h[k])
     {
-      H[k]         = z[k] + h[k];
-      theta[k]     = atan(((z[0] + h[0]) - (z[k] + h[k])) / w[k]);
-      eliminated[k]= false;
+      H[k]          = z[k] + h[k];
+      theta[k]      = atan(((z[0] + h[0]) - (z[k] + h[k])) / w[k]);
+      eliminated[k] = false;
     }
-    else
-    {
-      eliminated[k]= true;
-    }
+    else eliminated[k] = true;
   }
 
-  // ciclo di eliminazione
+  // eliminazione
   do
   {
-    loop   = false;
-    avg    = h[0];
-    counter= 0;
+    loop    = false;
+    avg     = h[0];
+    counter = 0;
 
     for (int k = 0; k < MOORE_NEIGHBORS; k++)
-      if (!eliminated[k])
-      {
-        avg += H[k];
-        counter++;
-      }
+      if (!eliminated[k]) { avg += H[k]; counter++; }
 
-    if (counter != 0)
-      avg = avg / double(counter);
+    if (counter) avg /= double(counter);
 
     for (int k = 0; k < MOORE_NEIGHBORS; k++)
-      if (!eliminated[k] && avg <= H[k])
-      {
-        eliminated[k] = true;
-        loop = true;
-      }
+      if (!eliminated[k] && avg <= H[k]) { eliminated[k] = true; loop = true; }
 
   } while (loop);
 
-  // calcolo dei flussi
+  // calcolo flussi: ora Mf era già 0, quindi scriviamo solo quelli non nulli
   for (int k = 1; k < MOORE_NEIGHBORS; k++)
   {
-    if (eliminated[k])
-    {
-      BUF_SET(Mf, r, c, k - 1, i, j, 0.0);
-      continue;
-    }
+    if (eliminated[k]) continue;
 
     if (h[0] > hc * cos(theta[k]))
       BUF_SET(Mf, r, c, k - 1, i, j, Pr[k] * (avg - H[k]));
-    else
-      BUF_SET(Mf, r, c, k - 1, i, j, 0.0);
   }
 }
 
@@ -272,6 +254,11 @@ void computeNewTemperatureAndSolidification_kernel(
   double z = GET(Sz, c, i, j);
   double h = GET(Sh, c, i, j);
   double T = GET(ST, c, i, j);
+
+  SET(Sz_next, c, i, j, z);
+  SET(Sh_next, c, i, j, h);
+  SET(ST_next, c, i, j, T);
+
 
   if (h > 0.0 && GET(Mb, c, i, j) == false)
   {
@@ -377,6 +364,8 @@ double reduceAdd_gpu(int r, int c, double *buffer)
 // ----------------------------------------------------------------------------
 int main(int argc, char **argv)
 {
+    printf("RUNNING %s | build %s %s\n", __FILE__, __DATE__, __TIME__);
+
     Sciara *sciara;
     init(sciara);
 
@@ -387,39 +376,45 @@ int main(int argc, char **argv)
     int r = sciara->domain->rows;
     int c = sciara->domain->cols;
 
-    dim3 blockDim(16,16);
+    dim3 blockDim(16, 16);
     dim3 gridDim((c + blockDim.x - 1) / blockDim.x,
                  (r + blockDim.y - 1) / blockDim.y);
 
     // Simulation initialization
     simulationInitialize(sciara);
 
-    util::Timer cl_timer;
-    double total_current_lava = -1.0;
-
     int reduceInterval = atoi(argv[REDUCE_INTERVL_ID]);
     double thickness_threshold = atof(argv[THICKNESS_THRESHOLD_ID]);
 
-  
+    double total_current_lava = -1.0;
+
+    // (opzionale ma consigliato) assicura che tutta l'init GPU sia completata
+    cudaDeviceSynchronize();
+
+    // Timer come il collega: misura il tempo totale del while
+    util::Timer cl_timer;
 
     // ---- MAIN LOOP ----
     while ((max_steps > 0 && sciara->simulation->step < max_steps) &&
-       ((sciara->simulation->elapsed_time <= sciara->simulation->effusion_duration) ||
-        (total_current_lava == -1 || total_current_lava > thickness_threshold)))
-
-
+           ((sciara->simulation->elapsed_time <= sciara->simulation->effusion_duration) ||
+            (total_current_lava == -1 || total_current_lava > thickness_threshold)))
     {
         sciara->simulation->elapsed_time += sciara->parameters->Pclock;
         sciara->simulation->step++;
 
+        const int N = r * c;
+        const size_t bytesD = static_cast<size_t>(N) * sizeof(double);
 
-        // Reset dei buffer next (GPU)
-        cudaMemset(sciara->substates->Sh_next, 0, sizeof(double)*r*c);
-        cudaMemset(sciara->substates->ST_next, 0, sizeof(double)*r*c);
-        cudaMemset(sciara->substates->Sz_next, 0, sizeof(double)*r*c);
+        // Prima della CPU emitLava (UM safety)
+        cudaDeviceSynchronize();
+
+        // Copia stato corrente nei buffer next (così massBalance lavora su next già inizializzati)
+        cudaMemcpy(sciara->substates->Sh_next, sciara->substates->Sh, bytesD, cudaMemcpyDefault);
+        cudaMemcpy(sciara->substates->ST_next, sciara->substates->ST, bytesD, cudaMemcpyDefault);
+        cudaMemcpy(sciara->substates->Sz_next, sciara->substates->Sz, bytesD, cudaMemcpyDefault);
 
         // ---------------------------------------------
-        // 🔥 EMIT LAVA (CPU) — versione originale!
+        // EMIT LAVA (CPU) — versione originale
         // ---------------------------------------------
         for (int i = 0; i < r; i++)
         {
@@ -443,7 +438,7 @@ int main(int argc, char **argv)
             }
         }
 
-        // Copiamo Sh_next → Sh, ST_next → ST  (CPU)
+        // Applica emissione: Sh_next -> Sh, ST_next -> ST
         std::swap(sciara->substates->Sh, sciara->substates->Sh_next);
         std::swap(sciara->substates->ST, sciara->substates->ST_next);
 
@@ -508,35 +503,28 @@ int main(int argc, char **argv)
         std::swap(sciara->substates->ST, sciara->substates->ST_next);
         std::swap(sciara->substates->Sz, sciara->substates->Sz_next);
 
-        // boundary (GPU)
-        boundaryConditions_kernel<<<gridDim, blockDim>>>(
-            r, c,
-            sciara->substates->Mf,
-            sciara->substates->Mb,
-            sciara->substates->Sh,
-            sciara->substates->Sh_next,
-            sciara->substates->ST,
-            sciara->substates->ST_next
-        );
-
-        std::swap(sciara->substates->Sh, sciara->substates->Sh_next);
-        std::swap(sciara->substates->ST, sciara->substates->ST_next);
-
-        // Reduction every N steps
-        if (sciara->simulation->step % reduceInterval == 0)
+        // Reduction every N steps (solo per criterio stop / monitoring)
+        if (reduceInterval > 0 && (sciara->simulation->step % reduceInterval == 0))
         {
             cudaDeviceSynchronize();
             total_current_lava = reduceAdd_gpu(r, c, sciara->substates->Sh);
-            printf("Step %d, current lava = %lf\n",
-                sciara->simulation->step, total_current_lava);
         }
     }
 
     cudaDeviceSynchronize();
 
+    // Stampa finale come il collega
+    double cl_time = static_cast<double>(cl_timer.getTimeMilliseconds()) / 1000.0;
+    printf("Final Step %d\n", sciara->simulation->step);
+    printf("Elapsed time [s]: %lf\n", cl_time);
+    printf("Emitted lava [m]: %lf\n", sciara->simulation->total_emitted_lava);
+    printf("Current lava [m]: %lf\n", total_current_lava);
+
+    printf("Saving output to %s...\n", argv[OUTPUT_PATH_ID]);
     saveConfiguration(argv[OUTPUT_PATH_ID], sciara);
 
     printf("Releasing memory...\n");
     finalize(sciara);
     return 0;
 }
+

@@ -1,8 +1,8 @@
-==584430== NVPROF is profiling process 584430, command: ./sciara_cuda ./data/2006/2006_000000000000.cfg ./data/2006/output_2006 10 10 1.0
-==584430== Some kernel(s) will be replayed on device 0 in order to collect all events/metrics.
-==584430== Profiling application: ./sciara_cuda ./data/2006/2006_000000000000.cfg ./data/2006/output_2006 10 10 1.0
-==584430== Profiling result:
-==584430== Metric result:
+==587459== NVPROF is profiling process 587459, command: ./sciara_cuda ./data/2006/2006_000000000000.cfg ./data/2006/output_2006 10 10 1.0
+==587459== Some kernel(s) will be replayed on device 0 in order to collect all events/metrics.
+==587459== Profiling application: ./sciara_cuda ./data/2006/2006_000000000000.cfg ./data/2006/output_2006 10 10 1.0
+==587459== Profiling result:
+==587459== Metric result:
 "Device","Kernel","Invocations","Metric Name","Metric Description","Min","Max","Avg"
 "NVIDIA GeForce GTX 980 (0)","computeNewTemperatureAndSolidification_kernel(int, int, double, double, double, double, double, double, double, double, double*, double*, double*, double*, double*, double*, double*, double*, bool*)",10,"flop_count_dp","Floating Point Operations(Double Precision)",1375,11550,6545
 "NVIDIA GeForce GTX 980 (0)","computeNewTemperatureAndSolidification_kernel(int, int, double, double, double, double, double, double, double, double, double*, double*, double*, double*, double*, double*, double*, double*, bool*)",10,"flop_count_sp","Floating Point Operations(Single Precision)",20,168,95

@@ -496,7 +496,7 @@
 	</g>
 </g>
 <g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="butt" stroke-linejoin="miter">
-	<use xlink:href='#gpPt6' transform='translate(608.26,292.74) scale(5.40)' color='rgb(139,   0,   0)'/>
+	<use xlink:href='#gpPt6' transform='translate(608.25,292.68) scale(5.40)' color='rgb(139,   0,   0)'/>
 	<use xlink:href='#gpPt6' transform='translate(1136.76,652.40) scale(5.40)' color='rgb(139,   0,   0)'/>
 </g>
 	</g>
@@ -507,7 +507,7 @@
 	</g>
 </g>
 <g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="butt" stroke-linejoin="miter">
-	<use xlink:href='#gpPt8' transform='translate(731.11,274.55) scale(5.40)' color='rgb(255,  99,  71)'/>
+	<use xlink:href='#gpPt8' transform='translate(731.11,274.50) scale(5.40)' color='rgb(255,  99,  71)'/>
 	<use xlink:href='#gpPt8' transform='translate(1136.76,670.40) scale(5.40)' color='rgb(255,  99,  71)'/>
 </g>
 	</g>
@@ -518,7 +518,7 @@
 	</g>
 </g>
 <g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="butt" stroke-linejoin="miter">
-	<use xlink:href='#gpPt12' transform='translate(669.23,275.46) scale(5.40)' color='rgb( 65, 105, 225)'/>
+	<use xlink:href='#gpPt12' transform='translate(669.24,275.41) scale(5.40)' color='rgb( 65, 105, 225)'/>
 	<use xlink:href='#gpPt12' transform='translate(1136.76,688.40) scale(5.40)' color='rgb( 65, 105, 225)'/>
 </g>
 	</g>
@@ -529,7 +529,7 @@
 	</g>
 </g>
 <g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="butt" stroke-linejoin="miter">
-	<use xlink:href='#gpPt4' transform='translate(632.72,251.53) scale(5.40)' color='rgb( 50, 205,  50)'/>
+	<use xlink:href='#gpPt4' transform='translate(632.71,251.51) scale(5.40)' color='rgb( 50, 205,  50)'/>
 	<use xlink:href='#gpPt4' transform='translate(1136.76,706.40) scale(5.40)' color='rgb( 50, 205,  50)'/>
 </g>
 	</g>
@@ -540,25 +540,25 @@
 	</g>
 </g>
 <g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="butt" stroke-linejoin="miter">
-	<use xlink:href='#gpPt10' transform='translate(620.60,255.97) scale(5.40)' color='rgb(255, 215,   0)'/>
+	<use xlink:href='#gpPt10' transform='translate(620.61,255.95) scale(5.40)' color='rgb(255, 215,   0)'/>
 	<use xlink:href='#gpPt10' transform='translate(1136.76,724.40) scale(5.40)' color='rgb(255, 215,   0)'/>
 </g>
 	</g>
 	<g id="gnuplot_plot_9" ><title>gnuplot_plot_9</title>
 <g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="butt" stroke-linejoin="miter">
-	<g transform="translate(620.60,244.50)" stroke="none" fill="black" font-family="Arial" font-size="9.00"  text-anchor="middle">
+	<g transform="translate(620.61,244.48)" stroke="none" fill="black" font-family="Arial" font-size="9.00"  text-anchor="middle">
 		<text><tspan font-family="Arial" >Tiled Halo</tspan></text>
 	</g>
-	<g transform="translate(731.11,263.08)" stroke="none" fill="black" font-family="Arial" font-size="9.00"  text-anchor="middle">
+	<g transform="translate(731.11,263.03)" stroke="none" fill="black" font-family="Arial" font-size="9.00"  text-anchor="middle">
 		<text><tspan font-family="Arial" >Cfame</tspan></text>
 	</g>
-	<g transform="translate(632.72,240.06)" stroke="none" fill="black" font-family="Arial" font-size="9.00"  text-anchor="middle">
+	<g transform="translate(632.71,240.04)" stroke="none" fill="black" font-family="Arial" font-size="9.00"  text-anchor="middle">
 		<text><tspan font-family="Arial" >Tiled</tspan></text>
 	</g>
-	<g transform="translate(669.23,263.99)" stroke="none" fill="black" font-family="Arial" font-size="9.00"  text-anchor="middle">
+	<g transform="translate(669.24,263.94)" stroke="none" fill="black" font-family="Arial" font-size="9.00"  text-anchor="middle">
 		<text><tspan font-family="Arial" >Cfamo</tspan></text>
 	</g>
-	<g transform="translate(608.26,281.27)" stroke="none" fill="black" font-family="Arial" font-size="9.00"  text-anchor="middle">
+	<g transform="translate(608.25,281.21)" stroke="none" fill="black" font-family="Arial" font-size="9.00"  text-anchor="middle">
 		<text><tspan font-family="Arial" >Global</tspan></text>
 	</g>
 </g>

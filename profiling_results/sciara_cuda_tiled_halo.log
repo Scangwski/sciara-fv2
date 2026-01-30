@@ -1,16 +1,7 @@
-Step 1000, current lava = 6.418652
-Step 2000, current lava = 8.558203
-Step 3000, current lava = 10.884965
-Step 4000, current lava = 9.200069
-Step 5000, current lava = 13.546237
-Step 6000, current lava = 4.336191
-Step 7000, current lava = 6.161906
-Step 8000, current lava = 4.332590
-Step 9000, current lava = 4.332590
-Step 10000, current lava = 4.332590
-Step 11000, current lava = 4.332590
-Step 12000, current lava = 4.332590
-Step 13000, current lava = 4.332590
-Step 14000, current lava = 4.332590
-Step 15000, current lava = 4.332590
-Step 16000, current lava = 4.332590
+RUNNING sciara_fv2_tiled_halo.cu | build Jan 30 2026 22:47:17
+Final Step 16000
+Elapsed time [s]: 27.888000
+Emitted lava [m]: 46997.805865
+Current lava [m]: 4.332590
+Saving output to ./data/2006/output_2006...
+Releasing memory...

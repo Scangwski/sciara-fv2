@@ -1,6 +1,6 @@
-RUNNING sciara_fv2.cu | build Jan 30 2026 22:24:58
+RUNNING sciara_fv2.cu | build Jan 30 2026 22:47:05
 Final Step 16000
-Elapsed time [s]: 30.937000
+Elapsed time [s]: 28.605000
 Emitted lava [m]: 46997.805865
 Current lava [m]: 0.192560
 Saving output to ./data/2006/output_2006...
